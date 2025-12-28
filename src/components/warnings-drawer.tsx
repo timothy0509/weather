@@ -4,9 +4,12 @@ import * as Dialog from "@radix-ui/react-dialog";
 
 import { TriangleAlert } from "lucide-react";
 
+import { useStationContext } from "@/components/station-provider";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/cn";
+import { t } from "@/lib/i18n";
+import { formatHktDateTime } from "@/lib/time";
 
 export type WarningEntry = {
   key: string;
@@ -23,6 +26,8 @@ export function WarningsDrawer({
   warning: WarningEntry;
   triggerLabel?: string;
 }) {
+  const { lang } = useStationContext();
+
   return (
     <Dialog.Root>
       <Dialog.Trigger asChild>
@@ -53,14 +58,17 @@ export function WarningsDrawer({
                       {warning.name ?? warning.key}
                     </div>
                     <div className="mt-1 text-xs text-[rgb(var(--muted))]">
-                      {warning.detailUpdateTime ? `Updated ${warning.detailUpdateTime}` : ""}
+                      {warning.detailUpdateTime
+                        ? `${t(lang, "label.updated")} ${formatHktDateTime(warning.detailUpdateTime)}`
+                        : ""}
                     </div>
                   </div>
                 </div>
                 <Dialog.Close asChild>
                   <Button type="button" variant="ghost" size="sm">
-                    Close
+                    {t(lang, "action.close")}
                   </Button>
+
                 </Dialog.Close>
               </div>
 

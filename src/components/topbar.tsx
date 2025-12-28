@@ -2,13 +2,14 @@
 
 import { useMemo } from "react";
 
-import { MapPin } from "lucide-react";
+import { MapPin, RotateCw } from "lucide-react";
 
 import { LanguageToggle } from "@/components/language-toggle";
 import { StationCommand } from "@/components/station-command";
 import { useStationContext } from "@/components/station-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
+import { t } from "@/lib/i18n";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -17,7 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 export function Topbar() {
-  const { station, stations, setStation } = useStationContext();
+  const { lang, station, stations, setStation } = useStationContext();
 
   const stationLabel = useMemo(() => station, [station]);
 
@@ -34,26 +35,31 @@ export function Topbar() {
             aria-hidden="true"
           />
           <div>
-            <div className="text-sm font-semibold tracking-tight">TimoWeather</div>
-            <div className="text-xs text-[rgb(var(--muted))]">Hong Kong</div>
+             <div className="text-sm font-semibold tracking-tight">{t(lang, "app.title")}</div>
+             <div className="text-xs text-[rgb(var(--muted))]">{t(lang, "app.region")}</div>
+
           </div>
         </div>
-        <div className="flex items-center gap-2 sm:hidden">
-          <ThemeToggle />
-          <StationDropdown
-            station={stationLabel}
-            stations={stations}
-            onSelect={setStation}
-          />
-        </div>
+         <div className="flex items-center gap-2 sm:hidden">
+           <RefreshButton />
+           <ThemeToggle />
+           <StationDropdown
+             station={stationLabel}
+             stations={stations}
+             onSelect={setStation}
+           />
+         </div>
+
       </div>
 
-      <div className="flex items-center justify-between gap-2 sm:justify-end">
-        <div className="hidden items-center gap-2 sm:flex">
-          <LanguageToggle />
-          <ThemeToggle />
-          <StationDropdown station={stationLabel} stations={stations} onSelect={setStation} />
-        </div>
+       <div className="flex items-center justify-between gap-2 sm:justify-end">
+         <div className="hidden items-center gap-2 sm:flex">
+           <RefreshButton />
+           <LanguageToggle />
+           <ThemeToggle />
+           <StationDropdown station={stationLabel} stations={stations} onSelect={setStation} />
+         </div>
+
 
         <div className="flex items-center gap-2 sm:hidden">
           <LanguageToggle />
@@ -66,6 +72,24 @@ export function Topbar() {
         />
       </div>
     </div>
+  );
+}
+
+function RefreshButton() {
+  const { lang } = useStationContext();
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      onClick={() => {
+        window.dispatchEvent(new CustomEvent("tw:refresh"));
+      }}
+      aria-label={t(lang, "action.refresh")}
+    >
+      <RotateCw className="h-4 w-4" />
+      <span className="hidden sm:inline">{t(lang, "action.refresh")}</span>
+    </Button>
   );
 }
 
@@ -84,7 +108,7 @@ function StationDropdown({
         <Button type="button" variant="ghost" size="sm">
           <MapPin className="h-4 w-4 text-[rgb(var(--muted))]" />
           <span className="max-w-[12rem] truncate">{station}</span>
-        </Button>
+                  </Button>
       </DropdownMenuTrigger>
       <DropdownMenuPanel align="end">
         {(stations.length ? stations : [station]).map((entry) => (

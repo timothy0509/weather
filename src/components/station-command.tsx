@@ -5,10 +5,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Command } from "cmdk";
 
+import { useStationContext } from "@/components/station-provider";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { SearchIcon } from "@/components/ui/icon";
 import { cn } from "@/lib/cn";
+import { t } from "@/lib/i18n";
 
 export function StationCommand({
   stations,
@@ -19,6 +21,7 @@ export function StationCommand({
   value: string;
   onSelectAction: (next: string) => void;
 }) {
+  const { lang } = useStationContext();
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -48,7 +51,7 @@ export function StationCommand({
       <Dialog.Trigger asChild>
         <Button type="button" variant="ghost" size="sm">
           <SearchIcon className="h-4 w-4" />
-          <span className="hidden sm:inline">Station</span>
+          <span className="hidden sm:inline">{t(lang, "label.station")}</span>
           <span className="text-xs text-[rgb(var(--muted))]">⌘K</span>
         </Button>
       </Dialog.Trigger>
@@ -61,7 +64,7 @@ export function StationCommand({
               <div className="flex items-center gap-3 border-b border-[rgb(var(--border))] px-4 py-3">
                 <SearchIcon className="h-4 w-4 text-[rgb(var(--muted))]" />
                 <Command.Input
-                  placeholder="Search stations…"
+                  placeholder={t(lang, "label.search_stations")}
                   autoFocus
                   className={cn(
                     "w-full bg-transparent text-sm outline-none",
@@ -71,9 +74,12 @@ export function StationCommand({
               </div>
               <Command.List className="max-h-[320px] overflow-auto p-2">
                 <Command.Empty className="px-3 py-6 text-sm text-[rgb(var(--muted))]">
-                  No stations found.
+                  {t(lang, "label.no_stations_found")}
                 </Command.Empty>
-                <Command.Group heading="Stations" className="text-xs text-[rgb(var(--muted))]">
+                <Command.Group
+                  heading={t(lang, "label.stations")}
+                  className="text-xs text-[rgb(var(--muted))]"
+                >
                   {filteredStations.map((station) => (
                     <Command.Item
                       key={station}
@@ -86,7 +92,9 @@ export function StationCommand({
                     >
                       <span className="truncate">{station}</span>
                       {station === value ? (
-                        <span className="text-xs text-[rgb(var(--muted))]">Selected</span>
+                        <span className="text-xs text-[rgb(var(--muted))]">
+                          {t(lang, "label.selected")}
+                        </span>
                       ) : null}
                     </Command.Item>
                   ))}

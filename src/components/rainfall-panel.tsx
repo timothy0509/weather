@@ -8,13 +8,20 @@ import { api } from "@/app/providers";
 import { useStationContext } from "@/components/station-provider";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/cn";
+import { t } from "@/lib/i18n";
 
 export function RainfallPanel() {
   const { lang } = useStationContext();
   const [mode, setMode] = useState<"district" | "station">("district");
 
-  const districtsQuery = api.weather.rainfallDistricts.useQuery({ lang }, { staleTime: 60_000 });
-  const stationsQuery = api.weather.rainfallStations.useQuery({ lang }, { staleTime: 5 * 60_000 });
+  const districtsQuery = api.weather.rainfallDistricts.useQuery(
+    { lang },
+    { staleTime: 60_000, enabled: mode === "district" },
+  );
+  const stationsQuery = api.weather.rainfallStations.useQuery(
+    { lang },
+    { staleTime: 5 * 60_000, enabled: mode === "station" },
+  );
 
   const rows = useMemo(() => {
     if (mode === "district") return districtsQuery.data?.districts ?? [];
@@ -32,14 +39,15 @@ export function RainfallPanel() {
           >
             <Droplets className="h-4 w-4" style={{ color: "rgb(var(--wx-rain))" }} />
           </div>
-          <div>
-            <div className="text-sm font-semibold">Rainfall</div>
-            <div className="mt-1 text-xs text-[rgb(var(--muted))]">
-              {mode === "district"
-                ? "Past hour (district max)"
-                : "Past hour (automatic stations)"}
+            <div>
+              <div className="text-sm font-semibold">{t(lang, "label.rainfall")}</div>
+              <div className="mt-1 text-xs text-[rgb(var(--muted))]">
+                {mode === "district"
+                  ? t(lang, "label.rainfall.past_hour_district")
+                  : t(lang, "label.rainfall.past_hour_stations")}
+              </div>
             </div>
-          </div>
+
         </div>
 
         <div className="flex rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--fg)/0.03)] p-1">
@@ -53,7 +61,7 @@ export function RainfallPanel() {
                 : "text-[rgb(var(--muted))] hover:bg-[rgb(var(--fg)/0.05)]",
             )}
           >
-            Districts
+            {t(lang, "label.rainfall.districts")}
           </button>
           <button
             type="button"
@@ -65,7 +73,7 @@ export function RainfallPanel() {
                 : "text-[rgb(var(--muted))] hover:bg-[rgb(var(--fg)/0.05)]",
             )}
           >
-            Stations
+            {t(lang, "label.rainfall.stations")}
           </button>
         </div>
       </div>
@@ -87,7 +95,7 @@ export function RainfallPanel() {
                   <div className="min-w-0">
                     <div className="truncate text-sm font-medium">{row.label}</div>
                     <div className="mt-1 text-xs text-[rgb(var(--muted))]">
-                      {row.status === "maintenance" ? "Maintenance" : ""}
+                      {row.status === "maintenance" ? t(lang, "label.maintenance") : ""}
                     </div>
                   </div>
                   <div className="text-right">

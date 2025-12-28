@@ -57,6 +57,8 @@ function cacheKey(name: string, lang: Language) {
   return `${name}:${lang}`;
 }
 
+const inflight = new Map<string, Promise<unknown>>();
+
 async function cached<T>(
   key: string,
   ttlMs: number,
@@ -64,9 +66,27 @@ async function cached<T>(
 ): Promise<T> {
   const existing = cache.get<T>(key);
   if (existing) return existing;
-  const value = await load();
-  cache.set(key, value, ttlMs);
-  return value;
+
+  const pending = inflight.get(key) as Promise<T> | undefined;
+  if (pending) return pending;
+
+  const startedAt = Date.now();
+
+  const promise = load()
+    .then((value) => {
+      cache.set(key, value, ttlMs);
+      return value;
+    })
+    .finally(() => {
+      inflight.delete(key);
+      const elapsedMs = Date.now() - startedAt;
+      if (process.env.NODE_ENV !== "test") {
+        console.info(`[hko] ${key} ${elapsedMs}ms`);
+      }
+    });
+
+  inflight.set(key, promise);
+  return promise;
 }
 
 export function createHkoService(fetcher: Fetcher) {

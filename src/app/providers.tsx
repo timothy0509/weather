@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { httpBatchLink } from "@trpc/client";
@@ -18,7 +18,17 @@ function getBaseUrl() {
 }
 
 export function Providers({ children }: { children: React.ReactNode }) {
-  const [queryClient] = useState(() => new QueryClient());
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            retry: 1,
+            refetchOnWindowFocus: true,
+          },
+        },
+      }),
+  );
   const [trpcClient] = useState(() =>
     api.createClient({
       links: [
@@ -29,6 +39,15 @@ export function Providers({ children }: { children: React.ReactNode }) {
       ],
     }),
   );
+
+  useEffect(() => {
+    const onRefresh = () => {
+      void queryClient.invalidateQueries();
+    };
+
+    window.addEventListener("tw:refresh", onRefresh);
+    return () => window.removeEventListener("tw:refresh", onRefresh);
+  }, [queryClient]);
 
   return (
     <api.Provider client={trpcClient} queryClient={queryClient}>
