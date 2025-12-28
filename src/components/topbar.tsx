@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import { LanguageToggle } from "@/components/language-toggle";
+import { StationCommand } from "@/components/station-command";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,9 +12,7 @@ import {
   DropdownMenuPanel,
   DropdownMenuItemButton,
 } from "@/components/ui/dropdown-menu";
-import { SearchIcon } from "@/components/ui/icon";
-
-const DEFAULT_STATION = "Hong Kong Observatory";
+import { DEFAULT_STATION, readStoredString, writeStoredString } from "@/lib/settings";
 
 const mockedStations = [
   "Hong Kong Observatory",
@@ -23,16 +23,13 @@ const mockedStations = [
   "Tuen Mun",
 ];
 
-function readStoredStation(): string {
-  if (typeof window === "undefined") return DEFAULT_STATION;
-  return window.localStorage.getItem("tw_station") ?? DEFAULT_STATION;
-}
-
 export function Topbar() {
-  const [station, setStation] = useState(readStoredStation);
+  const [station, setStation] = useState(() =>
+    readStoredString("tw_station", DEFAULT_STATION),
+  );
 
   useEffect(() => {
-    window.localStorage.setItem("tw_station", station);
+    writeStoredString("tw_station", station);
   }, [station]);
 
   const stationLabel = useMemo(() => station, [station]);
@@ -52,15 +49,20 @@ export function Topbar() {
 
       <div className="flex items-center justify-between gap-2 sm:justify-end">
         <div className="hidden items-center gap-2 sm:flex">
+          <LanguageToggle />
           <ThemeToggle />
           <StationDropdown station={stationLabel} onSelect={setStation} />
         </div>
 
-        <Button type="button" variant="ghost" size="sm">
-          <SearchIcon className="h-4 w-4" />
-          <span className="hidden sm:inline">Search</span>
-          <span className="text-xs text-[rgb(var(--muted))]">⌘K</span>
-        </Button>
+        <div className="flex items-center gap-2 sm:hidden">
+          <LanguageToggle />
+        </div>
+
+        <StationCommand
+          stations={mockedStations}
+          value={stationLabel}
+          onSelectAction={setStation}
+        />
       </div>
     </div>
   );
