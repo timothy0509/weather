@@ -16,6 +16,15 @@
   --accent: 37 99 235;
   --accent-fg: 255 255 255;
 
+  /* Weather tones */
+  --wx-cold: 37 99 235;
+  --wx-cool: 14 165 233;
+  --wx-mild: 16 185 129;
+  --wx-warm: 245 158 11;
+  --wx-hot: 239 68 68;
+  --wx-rain: 56 189 248;
+  --wx-storm: 168 85 247;
+
   /* Subtle text */
   --muted: 15 23 42 / 0.62;
 
@@ -36,6 +45,15 @@
 
   --accent: 56 189 248;
   --accent-fg: 6 10 18;
+
+  /* Weather tones */
+  --wx-cold: 96 165 250;
+  --wx-cool: 56 189 248;
+  --wx-mild: 52 211 153;
+  --wx-warm: 251 191 36;
+  --wx-hot: 248 113 113;
+  --wx-rain: 56 189 248;
+  --wx-storm: 196 181 253;
 
   --muted: 226 232 240 / 0.60;
 

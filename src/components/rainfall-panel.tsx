@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 
+import { Droplets } from "lucide-react";
+
 import { api } from "@/app/providers";
 import { useStationContext } from "@/components/station-provider";
 import { Card } from "@/components/ui/card";
@@ -22,12 +24,21 @@ export function RainfallPanel() {
   return (
     <Card className="p-6">
       <div className="flex items-center justify-between gap-3">
-        <div>
-          <div className="text-sm font-semibold">Rainfall</div>
-          <div className="mt-1 text-xs text-[rgb(var(--muted))]">
-            {mode === "district"
-              ? "Past hour (district max)"
-              : "Past hour (automatic stations)"}
+        <div className="flex items-center gap-3">
+          <div
+            className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[rgb(var(--border))]"
+            style={{ background: "rgb(var(--wx-rain) / 0.12)" }}
+            aria-hidden="true"
+          >
+            <Droplets className="h-4 w-4" style={{ color: "rgb(var(--wx-rain))" }} />
+          </div>
+          <div>
+            <div className="text-sm font-semibold">Rainfall</div>
+            <div className="mt-1 text-xs text-[rgb(var(--muted))]">
+              {mode === "district"
+                ? "Past hour (district max)"
+                : "Past hour (automatic stations)"}
+            </div>
           </div>
         </div>
 

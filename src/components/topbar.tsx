@@ -2,6 +2,8 @@
 
 import { useMemo } from "react";
 
+import { MapPin } from "lucide-react";
+
 import { LanguageToggle } from "@/components/language-toggle";
 import { StationCommand } from "@/components/station-command";
 import { useStationContext } from "@/components/station-provider";
@@ -22,9 +24,19 @@ export function Topbar() {
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex items-center justify-between gap-3 sm:justify-start">
-        <div>
-          <div className="text-sm font-semibold tracking-tight">TimoWeather</div>
-          <div className="text-xs text-[rgb(var(--muted))]">Hong Kong</div>
+        <div className="flex items-center gap-3">
+          <div
+            className="h-9 w-9 rounded-2xl"
+            style={{
+              background:
+                "radial-gradient(60% 60% at 30% 20%, rgb(var(--wx-rain)/0.8), transparent 70%), radial-gradient(70% 70% at 80% 30%, rgb(var(--wx-storm)/0.65), transparent 70%), rgb(var(--fg)/0.06)",
+            }}
+            aria-hidden="true"
+          />
+          <div>
+            <div className="text-sm font-semibold tracking-tight">TimoWeather</div>
+            <div className="text-xs text-[rgb(var(--muted))]">Hong Kong</div>
+          </div>
         </div>
         <div className="flex items-center gap-2 sm:hidden">
           <ThemeToggle />
@@ -70,6 +82,7 @@ function StationDropdown({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button type="button" variant="ghost" size="sm">
+          <MapPin className="h-4 w-4 text-[rgb(var(--muted))]" />
           <span className="max-w-[12rem] truncate">{station}</span>
         </Button>
       </DropdownMenuTrigger>

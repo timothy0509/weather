@@ -2,6 +2,8 @@
 
 import * as Dialog from "@radix-ui/react-dialog";
 
+import { TriangleAlert } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/cn";
@@ -35,12 +37,24 @@ export function WarningsDrawer({
           <div className="h-full p-4">
             <Card className="flex h-full flex-col p-0">
               <div className="flex items-start justify-between gap-3 border-b border-[rgb(var(--border))] p-5">
-                <div>
-                  <div className="text-base font-semibold">
-                    {warning.name ?? warning.key}
+                <div className="flex items-start gap-3">
+                  <div
+                    className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-2xl border border-[rgb(var(--border))]"
+                    style={{ background: "rgb(var(--wx-warm) / 0.12)" }}
+                    aria-hidden="true"
+                  >
+                    <TriangleAlert
+                      className="h-5 w-5"
+                      style={{ color: "rgb(var(--wx-warm))" }}
+                    />
                   </div>
-                  <div className="mt-1 text-xs text-[rgb(var(--muted))]">
-                    {warning.detailUpdateTime ? `Updated ${warning.detailUpdateTime}` : ""}
+                  <div>
+                    <div className="text-base font-semibold">
+                      {warning.name ?? warning.key}
+                    </div>
+                    <div className="mt-1 text-xs text-[rgb(var(--muted))]">
+                      {warning.detailUpdateTime ? `Updated ${warning.detailUpdateTime}` : ""}
+                    </div>
                   </div>
                 </div>
                 <Dialog.Close asChild>

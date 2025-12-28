@@ -19,8 +19,19 @@ export function AppShell({
       />
 
       <div className="relative mx-auto w-full max-w-6xl px-4 pb-16 pt-6 sm:px-6 lg:px-8">
-        <div className="sticky top-0 z-30 -mx-4 mb-6 bg-[rgb(var(--bg)/0.60)] px-4 pb-4 pt-2 backdrop-blur-xl sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
-          <div className="pointer-events-auto">{header}</div>
+        <div className="sticky top-4 z-30 mb-6">
+          <div className="pointer-events-auto">
+            <div
+              className={cn(
+                "rounded-[calc(var(--radius)+10px)] border border-[rgb(var(--border))]",
+                "bg-[rgb(var(--card)/0.65)] shadow-[0_20px_60px_-50px_rgb(var(--shadow)/0.85)]",
+                "backdrop-blur-xl",
+                "px-4 py-3 sm:px-5",
+              )}
+            >
+              {header}
+            </div>
+          </div>
         </div>
         <main className="relative">{children}</main>
       </div>
