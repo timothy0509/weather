@@ -1,26 +1,68 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
+
+  /* Core */
+  --bg: 255 255 255;
+  --fg: 12 14 18;
+
+  /* Surfaces */
+  --card: 255 255 255;
+  --card-fg: 12 14 18;
+  --border: 15 23 42 / 0.10;
+
+  /* Accents */
+  --accent: 37 99 235;
+  --accent-fg: 255 255 255;
+
+  /* Subtle text */
+  --muted: 15 23 42 / 0.62;
+
+  /* Effects */
+  --shadow: 2 12 30;
+  --radius: 16px;
+}
+
+.dark {
+  color-scheme: dark;
+
+  --bg: 6 10 18;
+  --fg: 241 245 249;
+
+  --card: 11 16 28;
+  --card-fg: 241 245 249;
+  --border: 148 163 184 / 0.14;
+
+  --accent: 56 189 248;
+  --accent-fg: 6 10 18;
+
+  --muted: 226 232 240 / 0.60;
+
+  --shadow: 0 0 0;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  --color-background: rgb(var(--bg));
+  --color-foreground: rgb(var(--fg));
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: rgb(var(--bg));
+  color: rgb(var(--fg));
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans",
+    sans-serif;
+}
+
+::selection {
+  background: rgb(var(--accent) / 0.25);
 }
