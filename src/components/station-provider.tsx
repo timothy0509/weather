@@ -6,12 +6,14 @@ import { api } from "@/app/providers";
 import {
   DEFAULT_LANGUAGE,
   DEFAULT_STATION,
+  type Language,
   readStoredString,
   writeStoredString,
 } from "@/lib/settings";
 
 type StationContextValue = {
-  lang: string;
+  lang: Language;
+  setLang: (next: Language) => void;
   station: string;
   stations: string[];
   setStation: (next: string) => void;
@@ -20,8 +22,8 @@ type StationContextValue = {
 const StationContext = createContext<StationContextValue | null>(null);
 
 export function StationProvider({ children }: { children: React.ReactNode }) {
-  const [lang, setLang] = useState(() =>
-    readStoredString("tw_lang", DEFAULT_LANGUAGE),
+  const [lang, setLang] = useState<Language>(() =>
+    readStoredString("tw_lang", DEFAULT_LANGUAGE) as Language,
   );
   const [station, setStation] = useState(() =>
     readStoredString("tw_station", DEFAULT_STATION),
@@ -29,7 +31,7 @@ export function StationProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const handler = () => {
-      setLang(readStoredString("tw_lang", DEFAULT_LANGUAGE));
+      setLang(readStoredString("tw_lang", DEFAULT_LANGUAGE) as Language);
       setStation(readStoredString("tw_station", DEFAULT_STATION));
     };
 
@@ -38,31 +40,30 @@ export function StationProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    writeStoredString("tw_station", station);
-  }, [station]);
+    writeStoredString("tw_lang", lang);
+  }, [lang]);
 
   const nowQuery = api.weather.now.useQuery(
-    { lang: lang as never, station },
+    { lang, station },
     { staleTime: 60_000 },
   );
 
+  const resolvedStation = nowQuery.data?.station ?? station;
   const stations = useMemo(() => nowQuery.data?.stations ?? [], [nowQuery.data?.stations]);
 
-  const selectedStation = useMemo(() => {
-    if (stations.length === 0) return station;
-    if (stations.includes(station)) return station;
-    if (stations.includes(DEFAULT_STATION)) return DEFAULT_STATION;
-    return stations[0] ?? station;
-  }, [station, stations]);
+  useEffect(() => {
+    writeStoredString("tw_station", resolvedStation);
+  }, [resolvedStation]);
 
   const value = useMemo(
     () => ({
       lang,
-      station: selectedStation,
+      setLang,
+      station: resolvedStation,
       stations,
       setStation,
     }),
-    [lang, selectedStation, stations],
+    [lang, resolvedStation, stations],
   );
 
   return (

@@ -1,4 +1,4 @@
-import type { Language } from "@/lib/settings";
+import { DEFAULT_STATION, type Language } from "@/lib/settings";
 import {
   fetchCurrentWeather,
   fetchForecast,
@@ -26,6 +26,7 @@ export type HkoNowResult = {
   updateTime: string;
   iconCode: number | null;
   iconUpdateTime: string;
+  station: string;
   temperature: { place: string; value: number; unit: string } | null;
   humidity: { place: string; value: number; unit: string } | null;
   stations: string[];
@@ -76,12 +77,23 @@ export function createHkoService(fetcher: Fetcher) {
       );
 
       const stations = getStations(current);
-      const temperature = getStationTemperature(current, station);
+
+      const resolvedStation =
+        stations.length === 0
+          ? station
+          : stations.includes(station)
+            ? station
+            : stations.includes(DEFAULT_STATION)
+              ? DEFAULT_STATION
+              : stations[0] ?? station;
+
+      const temperature = getStationTemperature(current, resolvedStation);
 
       return {
         updateTime: current.updateTime,
         iconCode: current.icon?.[0] ?? null,
         iconUpdateTime: current.iconUpdateTime,
+        station: resolvedStation,
         temperature,
         humidity: getHumidity(current),
         stations,

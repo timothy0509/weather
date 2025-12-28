@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 
+import { useStationContext } from "@/components/station-provider";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -9,27 +10,14 @@ import {
   DropdownMenuTrigger,
   DropdownMenuItemButton,
 } from "@/components/ui/dropdown-menu";
-import {
-  DEFAULT_LANGUAGE,
-  LANGUAGES,
-  type Language,
-  readStoredString,
-  writeStoredString,
-} from "@/lib/settings";
+import { LANGUAGES } from "@/lib/settings";
 
 export function LanguageToggle() {
-  const [lang, setLang] = useState<Language>(() =>
-    readStoredString("tw_lang", DEFAULT_LANGUAGE) as Language,
-  );
+  const { lang, setLang } = useStationContext();
 
-  useEffect(() => {
-    writeStoredString("tw_lang", lang);
+  const label = useMemo(() => {
+    return LANGUAGES.find((entry) => entry.value === lang)?.label ?? "English";
   }, [lang]);
-
-  const label = useMemo(
-    () => LANGUAGES.find((entry) => entry.value === lang)?.label ?? "English",
-    [lang],
-  );
 
   return (
     <DropdownMenu>

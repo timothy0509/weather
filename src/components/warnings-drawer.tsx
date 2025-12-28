@@ -1,0 +1,78 @@
+"use client";
+
+import * as Dialog from "@radix-ui/react-dialog";
+
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { cn } from "@/lib/cn";
+
+export type WarningEntry = {
+  key: string;
+  name?: string;
+  type?: string;
+  contents?: string[];
+  detailUpdateTime?: string;
+};
+
+export function WarningsDrawer({
+  warning,
+  triggerLabel,
+}: {
+  warning: WarningEntry;
+  triggerLabel?: string;
+}) {
+  return (
+    <Dialog.Root>
+      <Dialog.Trigger asChild>
+        <Button type="button" variant="ghost" size="sm" className="justify-start">
+          {triggerLabel ?? warning.name ?? warning.key}
+        </Button>
+      </Dialog.Trigger>
+
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm" />
+        <Dialog.Content className="fixed right-0 top-0 z-50 h-full w-[min(440px,90vw)]">
+          <div className="h-full p-4">
+            <Card className="flex h-full flex-col p-0">
+              <div className="flex items-start justify-between gap-3 border-b border-[rgb(var(--border))] p-5">
+                <div>
+                  <div className="text-base font-semibold">
+                    {warning.name ?? warning.key}
+                  </div>
+                  <div className="mt-1 text-xs text-[rgb(var(--muted))]">
+                    {warning.detailUpdateTime ? `Updated ${warning.detailUpdateTime}` : ""}
+                  </div>
+                </div>
+                <Dialog.Close asChild>
+                  <Button type="button" variant="ghost" size="sm">
+                    Close
+                  </Button>
+                </Dialog.Close>
+              </div>
+
+              <div className="flex-1 overflow-auto p-5">
+                {warning.contents?.length ? (
+                  <div className="space-y-4">
+                    {warning.contents.map((line, index) => (
+                      <p
+                        key={`${index}-${line.substring(0, 8)}`}
+                        className={cn(
+                          "text-sm leading-7",
+                          index === 0 ? "font-medium" : "text-[rgb(var(--muted))]",
+                        )}
+                      >
+                        {line}
+                      </p>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-sm text-[rgb(var(--muted))]">No details available.</div>
+                )}
+              </div>
+            </Card>
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
+  );
+}

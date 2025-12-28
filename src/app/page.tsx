@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 
-import { AppShell } from "@/components/app-shell";
-import { Topbar } from "@/components/topbar";
-import { Card } from "@/components/ui/card";
 import { api } from "@/app/providers";
-import { DEFAULT_LANGUAGE, DEFAULT_STATION, readStoredString } from "@/lib/settings";
+import { AppShell } from "@/components/app-shell";
+import { RainfallPanel } from "@/components/rainfall-panel";
+import { useStationContext } from "@/components/station-provider";
+import { Topbar } from "@/components/topbar";
+import { WarningsDrawer } from "@/components/warnings-drawer";
+import { Card } from "@/components/ui/card";
 
 function formatIsoTime(value: string) {
   if (!value) return "";
@@ -22,33 +24,18 @@ function formatIsoTime(value: string) {
 }
 
 export default function Home() {
-  const [lang, setLang] = useState(() =>
-    readStoredString("tw_lang", DEFAULT_LANGUAGE),
-  );
-  const [station, setStation] = useState(() =>
-    readStoredString("tw_station", DEFAULT_STATION),
-  );
-
-  useEffect(() => {
-    const handler = () => {
-      setLang(readStoredString("tw_lang", DEFAULT_LANGUAGE));
-      setStation(readStoredString("tw_station", DEFAULT_STATION));
-    };
-
-    window.addEventListener("storage", handler);
-    return () => window.removeEventListener("storage", handler);
-  }, []);
+  const { lang, station } = useStationContext();
 
   const nowQuery = api.weather.now.useQuery(
-    { lang: lang as never, station },
+    { lang, station },
     { staleTime: 60_000, refetchInterval: 120_000 },
   );
   const forecastQuery = api.weather.forecast9d.useQuery(
-    { lang: lang as never },
+    { lang },
     { staleTime: 30 * 60_000 },
   );
   const warningsQuery = api.weather.warnings.useQuery(
-    { lang: lang as never },
+    { lang },
     { staleTime: 120_000 },
   );
 
@@ -116,14 +103,19 @@ export default function Home() {
                   key={warning.key}
                   className="rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--fg)/0.03)] px-4 py-3"
                 >
-                  <div className="text-sm font-medium">
-                    {warning.name ?? warning.key}
-                  </div>
-                  {warning.contents?.[0] ? (
-                    <div className="mt-1 line-clamp-2 text-xs text-[rgb(var(--muted))]">
-                      {warning.contents[0]}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-medium">
+                        {warning.name ?? warning.key}
+                      </div>
+                      {warning.contents?.[0] ? (
+                        <div className="mt-1 line-clamp-2 text-xs text-[rgb(var(--muted))]">
+                          {warning.contents[0]}
+                        </div>
+                      ) : null}
                     </div>
-                  ) : null}
+                    <WarningsDrawer warning={warning} triggerLabel="Details" />
+                  </div>
                 </div>
               ))
             ) : (
@@ -185,6 +177,10 @@ export default function Home() {
             </div>
           ) : null}
         </Card>
+
+        <div className="lg:col-span-12">
+          <RainfallPanel />
+        </div>
       </div>
     </AppShell>
   );
