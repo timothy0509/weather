@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import { LanguageToggle } from "@/components/language-toggle";
 import { StationCommand } from "@/components/station-command";
+import { useStationContext } from "@/components/station-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,25 +13,9 @@ import {
   DropdownMenuPanel,
   DropdownMenuItemButton,
 } from "@/components/ui/dropdown-menu";
-import { DEFAULT_STATION, readStoredString, writeStoredString } from "@/lib/settings";
-
-const mockedStations = [
-  "Hong Kong Observatory",
-  "King's Park",
-  "Sha Tin",
-  "Chek Lap Kok",
-  "Wong Chuk Hang",
-  "Tuen Mun",
-];
 
 export function Topbar() {
-  const [station, setStation] = useState(() =>
-    readStoredString("tw_station", DEFAULT_STATION),
-  );
-
-  useEffect(() => {
-    writeStoredString("tw_station", station);
-  }, [station]);
+  const { station, stations, setStation } = useStationContext();
 
   const stationLabel = useMemo(() => station, [station]);
 
@@ -43,7 +28,11 @@ export function Topbar() {
         </div>
         <div className="flex items-center gap-2 sm:hidden">
           <ThemeToggle />
-          <StationDropdown station={stationLabel} onSelect={setStation} />
+          <StationDropdown
+            station={stationLabel}
+            stations={stations}
+            onSelect={setStation}
+          />
         </div>
       </div>
 
@@ -51,7 +40,7 @@ export function Topbar() {
         <div className="hidden items-center gap-2 sm:flex">
           <LanguageToggle />
           <ThemeToggle />
-          <StationDropdown station={stationLabel} onSelect={setStation} />
+          <StationDropdown station={stationLabel} stations={stations} onSelect={setStation} />
         </div>
 
         <div className="flex items-center gap-2 sm:hidden">
@@ -59,7 +48,7 @@ export function Topbar() {
         </div>
 
         <StationCommand
-          stations={mockedStations}
+          stations={stations}
           value={stationLabel}
           onSelectAction={setStation}
         />
@@ -70,9 +59,11 @@ export function Topbar() {
 
 function StationDropdown({
   station,
+  stations,
   onSelect,
 }: {
   station: string;
+  stations: string[];
   onSelect: (next: string) => void;
 }) {
   return (
@@ -83,7 +74,7 @@ function StationDropdown({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuPanel align="end">
-        {mockedStations.map((entry) => (
+        {(stations.length ? stations : [station]).map((entry) => (
           <DropdownMenuItemButton key={entry} onSelect={() => onSelect(entry)}>
             {entry}
           </DropdownMenuItemButton>
