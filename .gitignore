@@ -1,6 +1,10 @@
 # Never commit HKO documentation
 api_docs.md
 
+# local scratch
+.tmp/
+.local/
+
 # dependencies
 node_modules
 
