@@ -69,6 +69,10 @@ export function getForecastDays(forecast: Forecast) {
 
 export function getLocalForecastText(local: LocalForecast) {
   return {
+    generalSituation: local.generalSituation,
+    tcInfo: local.tcInfo,
+    fireDangerWarning: local.fireDangerWarning,
+    forecastPeriod: local.forecastPeriod,
     forecastDesc: local.forecastDesc,
     outlook: local.outlook,
     updateTime: local.updateTime,

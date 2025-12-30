@@ -10,19 +10,20 @@ import { t } from "@/lib/i18n";
 export function ThemeToggle() {
   const { lang } = useStationContext();
   const { resolvedTheme, setTheme } = useTheme();
-  const isDark = resolvedTheme === "dark";
 
   return (
     <Button
       type="button"
       variant="ghost"
       size="sm"
-      onClick={() => setTheme(isDark ? "light" : "dark")}
+      onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
       aria-label={t(lang, "action.toggle_theme")}
     >
-      {isDark ? <SunIcon className="h-4 w-4" /> : <MoonIcon className="h-4 w-4" />}
+      <SunIcon className="hidden h-4 w-4 dark:block" />
+      <MoonIcon className="h-4 w-4 dark:hidden" />
       <span className="hidden sm:inline">
-        {isDark ? t(lang, "label.theme_light") : t(lang, "label.theme_dark")}
+        <span className="hidden dark:inline">{t(lang, "label.theme_light")}</span>
+        <span className="dark:hidden">{t(lang, "label.theme_dark")}</span>
       </span>
     </Button>
   );

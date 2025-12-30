@@ -27,7 +27,10 @@ export default function Home() {
 
   const now = dashboardQuery.data?.now;
   const forecast = dashboardQuery.data?.forecast9d;
-  const warnings = dashboardQuery.data?.warnings;
+   const warnings = dashboardQuery.data?.warnings;
+   const localForecast = dashboardQuery.data?.localForecast;
+   const swt = dashboardQuery.data?.swt;
+
 
   const previewDays = useMemo(() => (forecast?.days ?? []).slice(0, 9), [forecast?.days]);
 
@@ -237,10 +240,68 @@ export default function Home() {
           ) : null}
         </Card>
 
-        <div className="lg:col-span-12">
-          <RainfallPanel />
-        </div>
-      </div>
-    </AppShell>
-  );
-}
+         <Card className="p-6 lg:col-span-12">
+           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+             <div className="text-sm font-semibold">Local forecast</div>
+             <div className="text-xs text-[rgb(var(--muted))]">
+               {localForecast?.updateTime ? `${t(lang, "label.updated")} ${formatHktDateTime(localForecast.updateTime)}` : ""}
+             </div>
+           </div>
+
+           <div className="mt-4 grid gap-3 lg:grid-cols-12">
+             <div className="lg:col-span-7">
+               <div className="rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--fg)/0.03)] px-4 py-3 text-sm">
+                 {dashboardQuery.isLoading ? (
+                   <div className="h-16 animate-pulse rounded-xl bg-[rgb(var(--fg)/0.06)]" />
+                 ) : localForecast?.forecastDesc ? (
+                   localForecast.forecastDesc
+                 ) : (
+                   <span className="text-[rgb(var(--muted))]">—</span>
+                 )}
+               </div>
+
+               {localForecast?.outlook ? (
+                 <div className="mt-3 text-sm text-[rgb(var(--muted))]">{localForecast.outlook}</div>
+               ) : null}
+
+               {localForecast?.tcInfo ? (
+                 <div className="mt-3 rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--fg)/0.03)] px-4 py-3 text-sm">
+                   {localForecast.tcInfo}
+                 </div>
+               ) : null}
+               {localForecast?.fireDangerWarning ? (
+                 <div className="mt-3 rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--fg)/0.03)] px-4 py-3 text-sm">
+                   {localForecast.fireDangerWarning}
+                 </div>
+               ) : null}
+             </div>
+
+             <div className="lg:col-span-5">
+               <div className="text-sm font-medium">Special weather tips</div>
+               <div className="mt-2 space-y-2">
+                 {dashboardQuery.isLoading ? (
+                   <div className="h-20 animate-pulse rounded-2xl bg-[rgb(var(--fg)/0.06)]" />
+                 ) : swt?.tips?.length ? (
+                   swt.tips.slice(0, 3).map((line: string, index: number) => (
+                     <div
+                       key={`${index}-${line.slice(0, 12)}`}
+                       className="rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--fg)/0.03)] px-4 py-3 text-sm"
+                     >
+                       {line}
+                     </div>
+                   ))
+                 ) : (
+                   <div className="text-sm text-[rgb(var(--muted))]">{t(lang, "label.warnings.none")}</div>
+                 )}
+               </div>
+             </div>
+           </div>
+         </Card>
+
+         <div className="lg:col-span-12">
+           <RainfallPanel />
+         </div>
+       </div>
+     </AppShell>
+   );
+ }
