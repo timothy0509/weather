@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { MapPin, RotateCw } from "lucide-react";
+import { RotateCw } from "lucide-react";
 
 import { LanguageToggle } from "@/components/language-toggle";
 import { StationCommand } from "@/components/station-command";
@@ -12,12 +12,6 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuPanel,
-  DropdownMenuItemButton,
-} from "@/components/ui/dropdown-menu";
 
 export function Topbar() {
   const { lang, station, stations, setStation } = useStationContext();
@@ -49,7 +43,6 @@ export function Topbar() {
         <RefreshButton />
         <LanguageToggle />
         <ThemeToggle />
-        <StationDropdown station={station} stations={stations} onSelect={setStation} />
         <StationCommand stations={stations} value={station} onSelectAction={setStation} />
       </div>
     </div>
@@ -95,33 +88,5 @@ function RefreshButton() {
       <RotateCw className="h-3.5 w-3.5" />
       <span className="hidden sm:inline">{t(lang, "action.refresh")}</span>
     </Button>
-  );
-}
-
-function StationDropdown({
-  station,
-  stations,
-  onSelect,
-}: {
-  station: string;
-  stations: string[];
-  onSelect: (next: string) => void;
-}) {
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button type="button" variant="ghost" size="sm">
-          <MapPin className="h-3.5 w-3.5 text-[rgb(var(--muted))]" />
-          <span className="max-w-[10rem] truncate sm:max-w-[14rem]">{station}</span>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuPanel align="end">
-        {(stations.length ? stations : [station]).map((entry) => (
-          <DropdownMenuItemButton key={entry} onSelect={() => onSelect(entry)}>
-            {entry}
-          </DropdownMenuItemButton>
-        ))}
-      </DropdownMenuPanel>
-    </DropdownMenu>
   );
 }
