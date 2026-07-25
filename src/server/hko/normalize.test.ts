@@ -30,7 +30,7 @@ describe("getStationRainfall", () => {
 });
 
 describe("getDistrictRainfall", () => {
-  it("marks 'main' entries as maintenance", () => {
+  it("treats main as primary reading, not maintenance", () => {
     const result = getDistrictRainfall({
       updateTime: "2025-01-01T00:00:00+08:00",
       icon: [],
@@ -48,8 +48,8 @@ describe("getDistrictRainfall", () => {
     } as unknown as import("@/server/hko/client").CurrentWeather);
 
     expect(result).toEqual([
-      { label: "Central", amountMm: 1.2, status: "maintenance" },
-      { label: "Kowloon", amountMm: 0.4, status: "maintenance" },
+      { label: "Central", amountMm: 1.2, status: "ok" },
+      { label: "Kowloon", amountMm: 0.4, status: "ok" },
       { label: "NT", amountMm: 0, status: "ok" },
     ]);
   });

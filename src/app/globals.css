@@ -3,67 +3,69 @@
 :root {
   color-scheme: light;
 
-  /* Core */
-  --bg: 255 255 255;
-  --fg: 12 14 18;
+  /* Paper desk */
+  --bg: 243 240 232;
+  --fg: 26 31 36;
+  --card: 250 248 242;
+  --card-fg: 26 31 36;
+  --border: 26 31 36 / 0.14;
+  --muted: 92 107 122;
+  --accent: 11 110 122;
+  --accent-fg: 250 248 242;
 
-  /* Surfaces */
-  --card: 255 255 255;
-  --card-fg: 12 14 18;
-  --border: 15 23 42 / 0.10;
+  /* Signal accents */
+  --signal-amber: 229 161 0;
+  --signal-red: 200 16 46;
+  --signal-black: 17 17 17;
+  --signal-teal: 11 110 122;
 
-  /* Accents */
-  --accent: 37 99 235;
-  --accent-fg: 255 255 255;
+  /* Weather tones (restrained) */
+  --wx-cold: 55 90 130;
+  --wx-cool: 11 110 122;
+  --wx-mild: 70 110 80;
+  --wx-warm: 229 161 0;
+  --wx-hot: 200 16 46;
+  --wx-rain: 11 110 122;
+  --wx-storm: 200 16 46;
 
-  /* Weather tones */
-  --wx-cold: 37 99 235;
-  --wx-cool: 14 165 233;
-  --wx-mild: 16 185 129;
-  --wx-warm: 245 158 11;
-  --wx-hot: 239 68 68;
-  --wx-rain: 56 189 248;
-  --wx-storm: 168 85 247;
-
-  /* Subtle text */
-  --muted: 15 23 42 / 0.62;
-
-  /* Effects */
-  --shadow: 2 12 30;
-  --radius: 16px;
+  --shadow: 26 31 36;
+  --radius: 2px;
+  --rule: 26 31 36 / 0.18;
 }
 
 .dark {
   color-scheme: dark;
 
-  --bg: 6 10 18;
-  --fg: 241 245 249;
+  --bg: 18 22 26;
+  --fg: 236 232 222;
+  --card: 28 33 38;
+  --card-fg: 236 232 222;
+  --border: 236 232 222 / 0.14;
+  --muted: 160 172 182;
+  --accent: 120 190 196;
+  --accent-fg: 18 22 26;
 
-  --card: 11 16 28;
-  --card-fg: 241 245 249;
-  --border: 148 163 184 / 0.14;
+  --signal-amber: 240 180 40;
+  --signal-red: 230 70 80;
+  --signal-black: 236 232 222;
+  --signal-teal: 120 190 196;
 
-  --accent: 56 189 248;
-  --accent-fg: 6 10 18;
-
-  /* Weather tones */
-  --wx-cold: 96 165 250;
-  --wx-cool: 56 189 248;
-  --wx-mild: 52 211 153;
-  --wx-warm: 251 191 36;
-  --wx-hot: 248 113 113;
-  --wx-rain: 56 189 248;
-  --wx-storm: 196 181 253;
-
-  --muted: 226 232 240 / 0.60;
+  --wx-cold: 130 170 210;
+  --wx-cool: 120 190 196;
+  --wx-mild: 140 190 150;
+  --wx-warm: 240 180 40;
+  --wx-hot: 230 70 80;
+  --wx-rain: 120 190 196;
+  --wx-storm: 230 70 80;
 
   --shadow: 0 0 0;
+  --rule: 236 232 222 / 0.16;
 }
 
 @theme inline {
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-
+  --font-sans: var(--font-display);
+  --font-serif: var(--font-body);
+  --font-mono: var(--font-data);
   --color-background: rgb(var(--bg));
   --color-foreground: rgb(var(--fg));
 }
@@ -74,13 +76,70 @@ body {
 }
 
 body {
-  background: rgb(var(--bg));
+  background:
+    radial-gradient(1200px 500px at 10% -10%, rgb(var(--signal-teal) / 0.07), transparent 55%),
+    linear-gradient(180deg, rgb(var(--bg)), rgb(var(--bg)));
   color: rgb(var(--fg));
-  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system,
-    "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans",
-    sans-serif;
+  font-family: var(--font-body), "Source Serif 4", Georgia, serif;
 }
 
 ::selection {
-  background: rgb(var(--accent) / 0.25);
+  background: rgb(var(--signal-amber) / 0.35);
+}
+
+.font-display {
+  font-family: var(--font-display), "Bricolage Grotesque", system-ui, sans-serif;
+}
+
+.font-data {
+  font-family: var(--font-data), "IBM Plex Mono", ui-monospace, monospace;
+}
+
+.board-rule {
+  border-color: rgb(var(--rule));
+}
+
+.section-label {
+  font-family: var(--font-data), "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgb(var(--muted));
+}
+
+@keyframes strip-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes temp-settle {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.anim-strip {
+  animation: strip-in 420ms ease-out both;
+}
+
+.anim-temp {
+  animation: temp-settle 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anim-strip,
+  .anim-temp {
+    animation: none;
+  }
 }

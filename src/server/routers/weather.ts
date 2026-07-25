@@ -2,10 +2,39 @@ import { z } from "zod";
 
 import { DEFAULT_STATION, type Language } from "@/lib/settings";
 import { fetchWithTimeout } from "@/server/hko/fetcher";
-import { createHkoService } from "@/server/hko/service";
+import {
+  createHkoService,
+  type HkoForecastResult,
+  type HkoLocalForecastResult,
+  type HkoNowResult,
+  type HkoSpecialWeatherTipsResult,
+  type HkoWarningsResult,
+} from "@/server/hko/service";
 import { publicProcedure, router } from "@/server/trpc";
 
 const languageSchema = z.union([z.literal("en"), z.literal("tc"), z.literal("sc")]);
+
+function errorMessage(error: unknown): string {
+  if (error instanceof Error && error.message) return error.message;
+  return "Unknown error";
+}
+
+export type DashboardSectionErrors = {
+  now?: string;
+  forecast9d?: string;
+  warnings?: string;
+  localForecast?: string;
+  swt?: string;
+};
+
+export type DashboardResult = {
+  now: HkoNowResult | null;
+  forecast9d: HkoForecastResult | null;
+  warnings: HkoWarningsResult | null;
+  localForecast: HkoLocalForecastResult | null;
+  swt: HkoSpecialWeatherTipsResult | null;
+  errors: DashboardSectionErrors;
+};
 
 export const weatherRouter = router({
   dashboard: publicProcedure
@@ -15,10 +44,11 @@ export const weatherRouter = router({
         station: z.string().default(DEFAULT_STATION),
       }),
     )
-    .query(async ({ input }) => {
+    .query(async ({ input }): Promise<DashboardResult> => {
       const service = createHkoService(fetchWithTimeout(fetch, 8000));
       const lang = input.lang as Language;
-      const [now, forecast9d, warnings, localForecast, swt] = await Promise.all([
+
+      const [now, forecast9d, warnings, localForecast, swt] = await Promise.allSettled([
         service.now(lang, input.station),
         service.forecast9d(lang),
         service.warnings(lang),
@@ -26,7 +56,24 @@ export const weatherRouter = router({
         service.specialWeatherTips(lang),
       ]);
 
-      return { now, forecast9d, warnings, localForecast, swt };
+      const errors: DashboardSectionErrors = {};
+
+      if (now.status === "rejected") errors.now = errorMessage(now.reason);
+      if (forecast9d.status === "rejected") errors.forecast9d = errorMessage(forecast9d.reason);
+      if (warnings.status === "rejected") errors.warnings = errorMessage(warnings.reason);
+      if (localForecast.status === "rejected") {
+        errors.localForecast = errorMessage(localForecast.reason);
+      }
+      if (swt.status === "rejected") errors.swt = errorMessage(swt.reason);
+
+      return {
+        now: now.status === "fulfilled" ? now.value : null,
+        forecast9d: forecast9d.status === "fulfilled" ? forecast9d.value : null,
+        warnings: warnings.status === "fulfilled" ? warnings.value : null,
+        localForecast: localForecast.status === "fulfilled" ? localForecast.value : null,
+        swt: swt.status === "fulfilled" ? swt.value : null,
+        errors,
+      };
     }),
 
   now: publicProcedure

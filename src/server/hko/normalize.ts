@@ -37,8 +37,8 @@ export function getDistrictRainfall(current: CurrentWeather): RainfallValue[] {
     .map((entry) => ({
       label: entry.place,
       amountMm: entry.max ?? null,
-      status:
-        entry.main === true || entry.main === "TRUE" ? ("maintenance" as const) : ("ok" as const),
+      // `main` marks the primary district reading, not maintenance.
+      status: "ok" as const,
     }))
     .sort((a, b) => a.label.localeCompare(b.label));
 }

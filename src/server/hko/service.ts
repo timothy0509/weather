@@ -11,6 +11,7 @@ import {
   fetchSpecialWeatherTips,
   fetchWarningInfo,
   fetchWarningSummary,
+  tipsFromSwt,
   type Fetcher,
   type OpenDataTable,
 } from "@/server/hko/client";
@@ -257,7 +258,7 @@ export function createHkoService(fetcher: Fetcher) {
         fetchSpecialWeatherTips(fetcher, lang),
       );
 
-      return { tips: result.swt };
+      return { tips: tipsFromSwt(result.swt) };
     },
 
     earthquake: async (): Promise<HkoEarthquakeResult> => {

@@ -7,9 +7,7 @@ export function Card({ className, ...props }: ComponentPropsWithoutRef<"div">) {
     <div
       className={cn(
         "rounded-[var(--radius)] border border-[rgb(var(--border))]",
-        "bg-[rgb(var(--card)/0.82)] text-[rgb(var(--card-fg))]",
-        "shadow-[0_30px_70px_-60px_rgb(var(--shadow)/0.70)]",
-        "backdrop-blur-xl",
+        "bg-[rgb(var(--card))] text-[rgb(var(--card-fg))]",
         className,
       )}
       {...props}
