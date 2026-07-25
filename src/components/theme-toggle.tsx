@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 
 import { useStationContext } from "@/components/station-provider";
@@ -10,21 +11,27 @@ import { t } from "@/lib/i18n";
 export function ThemeToggle() {
   const { lang } = useStationContext();
   const { resolvedTheme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
+
+  const isDark = mounted && resolvedTheme === "dark";
+  const label = isDark ? t(lang, "label.theme_dark") : t(lang, "label.theme_light");
 
   return (
     <Button
       type="button"
       variant="ghost"
       size="sm"
-      onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+      onClick={() => setTheme(isDark ? "light" : "dark")}
       aria-label={t(lang, "action.toggle_theme")}
     >
-      <SunIcon className="hidden h-4 w-4 dark:block" />
-      <MoonIcon className="h-4 w-4 dark:hidden" />
-      <span className="hidden sm:inline">
-        <span className="hidden dark:inline">{t(lang, "label.theme_light")}</span>
-        <span className="dark:hidden">{t(lang, "label.theme_dark")}</span>
-      </span>
+      {isDark ? (
+        <SunIcon className="h-4 w-4" />
+      ) : (
+        <MoonIcon className="h-4 w-4" />
+      )}
+      <span className="hidden sm:inline">{label}</span>
     </Button>
   );
 }
