@@ -11,17 +11,17 @@ import { Tabs, TabsButton } from "@/components/ui/tabs";
 import { CLIMATE_STATIONS, TIDE_STATIONS } from "@/lib/hko-stations";
 import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
-import { formatHktDateTime, getHktDateParts } from "@/lib/time";
+import { formatHktDateTime, getHktDateParts, getHktYesterdayIso, toCompactDate } from "@/lib/time";
 
 const OPENDATA_PRESETS = [
-  { label: "Sunrise/sunset (SRS)", dataType: "SRS", requiresDate: true, requiresStation: false },
-  { label: "Moonrise/moonset (MRS)", dataType: "MRS", requiresDate: true, requiresStation: false },
-  { label: "Visibility (LTMV)", dataType: "LTMV", requiresDate: false, requiresStation: false },
-  { label: "Lightning count (LHL)", dataType: "LHL", requiresDate: false, requiresStation: false },
-  { label: "Daily mean temp (CLMTEMP)", dataType: "CLMTEMP", requiresDate: true, requiresStation: true },
-  { label: "Daily max temp (CLMMAXT)", dataType: "CLMMAXT", requiresDate: true, requiresStation: true },
-  { label: "Daily min temp (CLMMINT)", dataType: "CLMMINT", requiresDate: true, requiresStation: true },
-  { label: "Radiation report (RYES)", dataType: "RYES", requiresDate: true, requiresStation: false, usesDateParam: true },
+  { label: "Sunrise/sunset (SRS)", dataType: "SRS", dateMode: "day" as const, requiresStation: false },
+  { label: "Moonrise/moonset (MRS)", dataType: "MRS", dateMode: "day" as const, requiresStation: false },
+  { label: "Visibility (LTMV)", dataType: "LTMV", dateMode: "none" as const, requiresStation: false },
+  { label: "Lightning count (LHL)", dataType: "LHL", dateMode: "none" as const, requiresStation: false },
+  { label: "Daily mean temp (CLMTEMP)", dataType: "CLMTEMP", dateMode: "month" as const, requiresStation: true },
+  { label: "Daily max temp (CLMMAXT)", dataType: "CLMMAXT", dateMode: "month" as const, requiresStation: true },
+  { label: "Daily min temp (CLMMINT)", dataType: "CLMMINT", dateMode: "month" as const, requiresStation: true },
+  { label: "Radiation report (RYES)", dataType: "RYES", dateMode: "yesterday" as const, requiresStation: false },
 ] as const;
 
 type Preset = (typeof OPENDATA_PRESETS)[number];
@@ -52,6 +52,7 @@ export default function ExplorePage() {
   const { lang } = useStationContext();
 
   const hktToday = useMemo(() => getHktDateParts(), []);
+  const hktYesterday = useMemo(() => getHktYesterdayIso(), []);
   const lunarDate = hktToday.iso;
 
   const localQuery = api.weather.localForecast.useQuery({ lang });
@@ -70,19 +71,31 @@ export default function ExplorePage() {
       lang,
     };
 
-    if ("usesDateParam" in preset && preset.usesDateParam) {
-      const compact = hktToday.iso.replace(/-/g, "");
-      return { ...base, date: compact };
+    if (preset.dateMode === "yesterday") {
+      return { ...base, date: toCompactDate(hktYesterday) };
     }
 
-    return {
-      ...base,
-      year: preset.requiresDate ? hktToday.year : undefined,
-      month: preset.requiresDate ? hktToday.month : undefined,
-      day: preset.requiresDate ? hktToday.day : undefined,
-      station: preset.requiresStation ? climateStation : undefined,
-    };
-  }, [climateStation, hktToday.day, hktToday.iso, hktToday.month, hktToday.year, lang, preset]);
+    if (preset.dateMode === "month") {
+      return {
+        ...base,
+        year: hktToday.year - 1,
+        month: hktToday.month,
+        station: preset.requiresStation ? climateStation : undefined,
+      };
+    }
+
+    if (preset.dateMode === "day") {
+      return {
+        ...base,
+        year: hktToday.year,
+        month: hktToday.month,
+        day: hktToday.day,
+        station: preset.requiresStation ? climateStation : undefined,
+      };
+    }
+
+    return base;
+  }, [climateStation, hktToday.day, hktToday.month, hktToday.year, hktYesterday, lang, preset]);
 
   const openDataQuery = api.weather.openData.useQuery(openDataParams, {
     staleTime: 5 * 60_000,
@@ -341,9 +354,13 @@ export default function ExplorePage() {
 
               <div className="flex flex-wrap items-center gap-2 font-data text-[0.65rem] uppercase tracking-[0.1em] text-[rgb(var(--muted))]">
                 <span>{preset.label}</span>
-                {preset.requiresDate && !("usesDateParam" in preset && preset.usesDateParam) ? (
-                  <span>{hktToday.iso}</span>
+                {preset.dateMode === "day" ? <span>{hktToday.iso}</span> : null}
+                {preset.dateMode === "month" ? (
+                  <span>
+                    {hktToday.year - 1}-{String(hktToday.month).padStart(2, "0")}
+                  </span>
                 ) : null}
+                {preset.dateMode === "yesterday" ? <span>{hktYesterday}</span> : null}
                 {preset.requiresStation ? (
                   <select
                     value={climateStation}

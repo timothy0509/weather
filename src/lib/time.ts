@@ -34,3 +34,13 @@ export function getHktDateParts(date: Date = new Date()) {
     iso: `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`,
   };
 }
+
+/** Yesterday's calendar date in Asia/Hong_Kong as YYYY-MM-DD. */
+export function getHktYesterdayIso(date: Date = new Date()) {
+  const yesterday = new Date(date.getTime() - 24 * 60 * 60 * 1000);
+  return getHktDateParts(yesterday).iso;
+}
+
+export function toCompactDate(iso: string) {
+  return iso.replace(/-/g, "");
+}

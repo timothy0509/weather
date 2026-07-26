@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   fetchCurrentWeather,
+  fetchLunarDate,
+  fetchOpenDataTable,
   fetchSpecialWeatherTips,
   fetchWarningSummary,
   tipsFromSwt,
@@ -57,6 +59,27 @@ describe("fetchCurrentWeather", () => {
     expect(result.uvindex).toBeUndefined();
     expect(result.temperature?.data[0]?.value).toBe(28);
   });
+
+  it("coerces string lightning occur values to booleans", async () => {
+    const payload = {
+      updateTime: "2026-07-26T15:00:00+08:00",
+      warningMessage: [],
+      icon: [64],
+      iconUpdateTime: "",
+      lightning: {
+        data: [{ place: "Lantau", occur: "true" }],
+        startTime: "2026-07-26T14:45:00+08:00",
+        endTime: "2026-07-26T15:45:00+08:00",
+      },
+      temperature: {
+        data: [{ place: "Hong Kong Observatory", value: 29, unit: "C" }],
+      },
+    };
+
+    const result = await fetchCurrentWeather(makeFetcher(payload), "en");
+    expect(result.lightning?.data[0]?.occur).toBe(true);
+    expect(result.temperature?.data[0]?.value).toBe(29);
+  });
 });
 
 describe("fetchSpecialWeatherTips", () => {
@@ -101,5 +124,52 @@ describe("fetchWarningSummary", () => {
 
     const result = await fetchWarningSummary(makeFetcher(payload), "en");
     expect(result.WTCSGNL?.code).toBe("TC8NW");
+  });
+});
+
+describe("fetchLunarDate", () => {
+  it("parses JSON even when content-type is text/html", async () => {
+    const payload = {
+      LunarYear: "丙午年，馬",
+      LunarDate: "六月十三",
+    };
+
+    const result = await fetchLunarDate(makeFetcher(payload, "text/html; charset=UTF-8"), "2026-07-26");
+    expect(result.LunarYear).toBe("丙午年，馬");
+    expect(result.LunarDate).toBe("六月十三");
+  });
+});
+
+describe("fetchOpenDataTable", () => {
+  it("keeps tabular fields/data responses", async () => {
+    const payload = {
+      fields: ["Year", "Month", "Day", "Value"],
+      data: [["2025", "7", "1", "28.1"]],
+    };
+
+    const result = await fetchOpenDataTable(makeFetcher(payload), {
+      dataType: "CLMTEMP",
+      rformat: "json",
+    });
+    expect(result.fields).toEqual(["Year", "Month", "Day", "Value"]);
+    expect(result.data).toHaveLength(1);
+  });
+
+  it("normalizes flat RYES objects into key-value rows", async () => {
+    const payload = {
+      HongKongDesc: "Average ambient gamma radiation dose rate...",
+      ChekLapKokMaxTemp: "34.0",
+    };
+
+    const result = await fetchOpenDataTable(makeFetcher(payload), {
+      dataType: "RYES",
+      date: "20260725",
+      rformat: "json",
+    });
+    expect(result.fields).toEqual(["Key", "Value"]);
+    expect(result.data).toEqual([
+      ["HongKongDesc", "Average ambient gamma radiation dose rate..."],
+      ["ChekLapKokMaxTemp", "34.0"],
+    ]);
   });
 });

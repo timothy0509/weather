@@ -93,7 +93,11 @@ const currentWeatherSchema = z.object({
         .array(
           z.object({
             place: z.string(),
-            occur: z.boolean().optional(),
+            occur: z.preprocess((value) => {
+              if (value === true || value === "true") return true;
+              if (value === false || value === "false") return false;
+              return undefined;
+            }, z.boolean().optional()),
           }),
         )
         .optional()
@@ -213,6 +217,19 @@ export type Forecast = z.infer<typeof forecastSchema>;
 export type LocalForecast = z.infer<typeof localForecastSchema>;
 export type HourlyRainfall = z.infer<typeof hourlyRainfallSchema>;
 
+async function parseResponseJson(response: Response) {
+  if (!response.ok) {
+    throw new HkoError(`HKO request failed: ${response.statusText}`, response.status);
+  }
+
+  const text = await response.text();
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    throw new HkoError(`HKO returned non-JSON response: ${text.slice(0, 180)}`);
+  }
+}
+
 async function fetchJson(fetcher: Fetcher, url: string) {
   const response = await fetcher(url, {
     headers: {
@@ -222,17 +239,7 @@ async function fetchJson(fetcher: Fetcher, url: string) {
     cache: "no-store",
   });
 
-  if (!response.ok) {
-    throw new HkoError(`HKO request failed: ${response.statusText}`, response.status);
-  }
-
-  const contentType = response.headers.get("content-type") ?? "";
-  if (!contentType.includes("application/json") && !contentType.includes("text/json")) {
-    const text = await response.text();
-    throw new HkoError(`HKO returned non-JSON response: ${text.slice(0, 180)}`);
-  }
-
-  return response.json();
+  return parseResponseJson(response);
 }
 
 export async function fetchCurrentWeather(fetcher: Fetcher, lang: Language) {
@@ -396,6 +403,25 @@ const openDataTableSchema = z.object({
 
 export type OpenDataTable = z.infer<typeof openDataTableSchema>;
 
+function normalizeOpenDataTable(json: unknown): OpenDataTable {
+  if (json != null && typeof json === "object" && !Array.isArray(json)) {
+    const record = json as Record<string, unknown>;
+    if (Array.isArray(record.fields) && Array.isArray(record.data)) {
+      return openDataTableSchema.parse(json);
+    }
+
+    return {
+      fields: ["Key", "Value"],
+      data: Object.entries(record).map(([key, value]) => [
+        key,
+        typeof value === "string" || typeof value === "number" ? value : JSON.stringify(value),
+      ]),
+    };
+  }
+
+  return openDataTableSchema.parse(json);
+}
+
 export async function fetchOpenDataTable(
   fetcher: Fetcher,
   input: {
@@ -433,16 +459,6 @@ export async function fetchOpenDataTable(
     cache: "no-store",
   });
 
-  if (!response.ok) {
-    throw new HkoError(`HKO request failed: ${response.statusText}`, response.status);
-  }
-
-  const contentType = response.headers.get("content-type") ?? "";
-  if (!contentType.includes("application/json")) {
-    const text = await response.text();
-    throw new HkoError(`HKO returned non-JSON response: ${text.slice(0, 180)}`);
-  }
-
-  const json = await response.json();
-  return openDataTableSchema.parse(json);
+  const json = await parseResponseJson(response);
+  return normalizeOpenDataTable(json);
 }
