@@ -11,7 +11,10 @@ export function fetchWithTimeout(fetcher: Fetcher, timeoutMs: number): Fetcher {
         signal: controller.signal,
       });
     } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") {
+      const isAbort =
+        (error instanceof Error || error instanceof DOMException) &&
+        error.name === "AbortError";
+      if (isAbort) {
         throw new HkoError(`HKO request timed out after ${timeoutMs}ms`);
       }
 

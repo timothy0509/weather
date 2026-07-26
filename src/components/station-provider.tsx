@@ -7,6 +7,7 @@ import {
   DEFAULT_LANGUAGE,
   DEFAULT_STATION,
   type Language,
+  parseLanguage,
   readStoredString,
   writeStoredString,
 } from "@/lib/settings";
@@ -23,7 +24,7 @@ const StationContext = createContext<StationContextValue | null>(null);
 
 export function StationProvider({ children }: { children: React.ReactNode }) {
   const [lang, setLang] = useState<Language>(() =>
-    readStoredString("tw_lang", DEFAULT_LANGUAGE) as Language,
+    parseLanguage(readStoredString("tw_lang", DEFAULT_LANGUAGE)),
   );
   const [station, setStation] = useState(() =>
     readStoredString("tw_station", DEFAULT_STATION),
@@ -31,7 +32,7 @@ export function StationProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const handler = () => {
-      setLang(readStoredString("tw_lang", DEFAULT_LANGUAGE) as Language);
+      setLang(parseLanguage(readStoredString("tw_lang", DEFAULT_LANGUAGE)));
       setStation(readStoredString("tw_station", DEFAULT_STATION));
     };
 

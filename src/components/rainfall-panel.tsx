@@ -2,11 +2,9 @@
 
 import { useMemo, useState } from "react";
 
-import { Droplets } from "lucide-react";
-
 import { api } from "@/app/providers";
 import { useStationContext } from "@/components/station-provider";
-import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
 
@@ -28,36 +26,29 @@ export function RainfallPanel() {
     return stationsQuery.data?.stations ?? [];
   }, [districtsQuery.data?.districts, mode, stationsQuery.data?.stations]);
 
-  return (
-    <Card className="p-6">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div
-            className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[rgb(var(--border))]"
-            style={{ background: "rgb(var(--wx-rain) / 0.12)" }}
-            aria-hidden="true"
-          >
-            <Droplets className="h-4 w-4" style={{ color: "rgb(var(--wx-rain))" }} />
-          </div>
-            <div>
-              <div className="text-sm font-semibold">{t(lang, "label.rainfall")}</div>
-              <div className="mt-1 text-xs text-[rgb(var(--muted))]">
-                {mode === "district"
-                  ? t(lang, "label.rainfall.past_hour_district")
-                  : t(lang, "label.rainfall.past_hour_stations")}
-              </div>
-            </div>
+  const loading = mode === "district" ? districtsQuery.isLoading : stationsQuery.isLoading;
+  const error = mode === "district" ? districtsQuery.error : stationsQuery.error;
 
+  return (
+    <div>
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <div className="section-label">{t(lang, "label.rainfall")}</div>
+          <div className="mt-1 font-data text-[0.65rem] text-[rgb(var(--muted))]">
+            {mode === "district"
+              ? t(lang, "label.rainfall.past_hour_district")
+              : t(lang, "label.rainfall.past_hour_stations")}
+          </div>
         </div>
 
-        <div className="flex rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--fg)/0.03)] p-1">
+        <div className="flex border border-[rgb(var(--rule))]">
           <button
             type="button"
             onClick={() => setMode("district")}
             className={cn(
-              "rounded-xl px-3 py-1.5 text-xs font-medium transition",
+              "font-data px-2.5 py-1 text-[0.65rem] uppercase tracking-[0.1em] transition",
               mode === "district"
-                ? "bg-[rgb(var(--fg)/0.07)]"
+                ? "bg-[rgb(var(--fg))] text-[rgb(var(--bg))]"
                 : "text-[rgb(var(--muted))] hover:bg-[rgb(var(--fg)/0.05)]",
             )}
           >
@@ -67,9 +58,9 @@ export function RainfallPanel() {
             type="button"
             onClick={() => setMode("station")}
             className={cn(
-              "rounded-xl px-3 py-1.5 text-xs font-medium transition",
+              "font-data px-2.5 py-1 text-[0.65rem] uppercase tracking-[0.1em] transition",
               mode === "station"
-                ? "bg-[rgb(var(--fg)/0.07)]"
+                ? "bg-[rgb(var(--fg))] text-[rgb(var(--bg))]"
                 : "text-[rgb(var(--muted))] hover:bg-[rgb(var(--fg)/0.05)]",
             )}
           >
@@ -78,36 +69,57 @@ export function RainfallPanel() {
         </div>
       </div>
 
-      <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-        {(mode === "district" ? districtsQuery.isLoading : stationsQuery.isLoading)
-          ? Array.from({ length: 6 }).map((_, index) => (
-              <div
-                key={index}
-                className="h-16 animate-pulse rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--fg)/0.03)]"
-              />
-            ))
-          : rows.slice(0, 12).map((row) => (
-              <div
-                key={row.label}
-                className="rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--fg)/0.03)] px-4 py-3"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-medium">{row.label}</div>
-                    <div className="mt-1 text-xs text-[rgb(var(--muted))]">
-                      {row.status === "maintenance" ? t(lang, "label.maintenance") : ""}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-sm font-semibold">
-                      {row.amountMm === null ? "—" : `${row.amountMm}`}
-                      <span className="ml-1 text-xs text-[rgb(var(--muted))]">mm</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-      </div>
-    </Card>
+      {error ? (
+        <div className="mt-3 flex items-center justify-between gap-3 border border-[rgb(var(--signal-red)/0.35)] bg-[rgb(var(--signal-red)/0.08)] px-3 py-2 text-sm">
+          <span>Rainfall unavailable</span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() =>
+              mode === "district" ? districtsQuery.refetch() : stationsQuery.refetch()
+            }
+          >
+            {t(lang, "action.retry")}
+          </Button>
+        </div>
+      ) : (
+        <div className="mt-3 max-h-80 overflow-auto border border-[rgb(var(--rule))]">
+          <table className="w-full text-left text-sm">
+            <thead className="sticky top-0 bg-[rgb(var(--card))] font-data text-[0.65rem] uppercase tracking-[0.1em] text-[rgb(var(--muted))]">
+              <tr className="border-b border-[rgb(var(--rule))]">
+                <th className="px-3 py-2 font-medium">Place</th>
+                <th className="px-3 py-2 text-right font-medium">mm</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading
+                ? Array.from({ length: 6 }).map((_, index) => (
+                    <tr key={index} className="border-t border-[rgb(var(--rule))]">
+                      <td colSpan={2} className="px-3 py-3">
+                        <div className="h-4 animate-pulse bg-[rgb(var(--fg)/0.06)]" />
+                      </td>
+                    </tr>
+                  ))
+                : rows.slice(0, 18).map((row) => (
+                    <tr key={row.label} className="border-t border-[rgb(var(--rule))]">
+                      <td className="px-3 py-2">
+                        <div className="truncate">{row.label}</div>
+                        {row.status === "maintenance" ? (
+                          <div className="font-data text-[0.65rem] uppercase tracking-[0.08em] text-[rgb(var(--muted))]">
+                            {t(lang, "label.maintenance")}
+                          </div>
+                        ) : null}
+                      </td>
+                      <td className="px-3 py-2 text-right font-data tabular-nums">
+                        {row.amountMm === null ? "—" : row.amountMm}
+                      </td>
+                    </tr>
+                  ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
   );
 }

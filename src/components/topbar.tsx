@@ -1,90 +1,78 @@
 "use client";
 
-import { useMemo } from "react";
-
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
-import { Compass, MapPin, RotateCw } from "lucide-react";
+import { RotateCw } from "lucide-react";
 
 import { LanguageToggle } from "@/components/language-toggle";
 import { StationCommand } from "@/components/station-command";
 import { useStationContext } from "@/components/station-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuPanel,
-  DropdownMenuItemButton,
-} from "@/components/ui/dropdown-menu";
 
 export function Topbar() {
   const { lang, station, stations, setStation } = useStationContext();
-
-  const stationLabel = useMemo(() => station, [station]);
+  const pathname = usePathname();
 
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex items-center justify-between gap-3 sm:justify-start">
-         <div className="flex items-center gap-3">
-           <div
-             className="h-9 w-9 rounded-2xl"
-             style={{
-               background:
-                 "radial-gradient(60% 60% at 30% 20%, rgb(var(--wx-rain)/0.8), transparent 70%), radial-gradient(70% 70% at 80% 30%, rgb(var(--wx-storm)/0.65), transparent 70%), rgb(var(--fg)/0.06)",
-             }}
-             aria-hidden="true"
-           />
-           <div>
-             <div className="text-sm font-semibold tracking-tight">{t(lang, "app.title")}</div>
-             <div className="text-xs text-[rgb(var(--muted))]">{t(lang, "app.region")}</div>
-           </div>
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex min-w-0 items-end gap-4">
+        <div className="min-w-0">
+          <div className="font-display text-xl font-extrabold tracking-tight sm:text-2xl">
+            {t(lang, "app.title")}
+          </div>
+          <div className="font-data mt-0.5 text-[0.65rem] uppercase tracking-[0.16em] text-[rgb(var(--muted))]">
+            {t(lang, "app.region")} · HKO
+          </div>
+        </div>
 
-           <Button asChild type="button" variant="ghost" size="sm" className="hidden sm:inline-flex">
-             <Link href="/explore" aria-label="Explore">
-               <Compass className="h-4 w-4" />
-               <span>Explore</span>
-             </Link>
-           </Button>
-         </div>
-         <div className="flex items-center gap-2 sm:hidden">
-           <RefreshButton />
-           <ThemeToggle />
-           <StationDropdown
-             station={stationLabel}
-             stations={stations}
-             onSelect={setStation}
-           />
-         </div>
-
+        <nav className="mb-0.5 flex items-center gap-1 border-l border-[rgb(var(--rule))] pl-4">
+          <NavLink href="/" active={pathname === "/"}>
+            {t(lang, "nav.board")}
+          </NavLink>
+          <NavLink href="/explore" active={pathname?.startsWith("/explore") ?? false}>
+            {t(lang, "nav.explore")}
+          </NavLink>
+          <NavLink href="/radar" active={pathname?.startsWith("/radar") ?? false}>
+            {t(lang, "nav.radar")}
+          </NavLink>
+        </nav>
       </div>
 
-       <div className="flex items-center justify-between gap-2 sm:justify-end">
-         <div className="hidden items-center gap-2 sm:flex">
-           <RefreshButton />
-           <LanguageToggle />
-           <ThemeToggle />
-           <StationDropdown station={stationLabel} stations={stations} onSelect={setStation} />
-         </div>
-
-
-         <div className="flex items-center gap-2 sm:hidden">
-           <Button asChild type="button" variant="ghost" size="sm" aria-label="Explore">
-             <Link href="/explore">
-               <Compass className="h-4 w-4" />
-             </Link>
-           </Button>
-           <LanguageToggle />
-         </div>
-
-        <StationCommand
-          stations={stations}
-          value={stationLabel}
-          onSelectAction={setStation}
-        />
+      <div className="flex flex-wrap items-center gap-1.5">
+        <RefreshButton />
+        <LanguageToggle />
+        <ThemeToggle />
+        <StationCommand stations={stations} value={station} onSelectAction={setStation} />
       </div>
     </div>
+  );
+}
+
+function NavLink({
+  href,
+  active,
+  children,
+}: {
+  href: string;
+  active: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      className={cn(
+        "font-data rounded-[var(--radius)] px-2 py-1 text-[0.7rem] uppercase tracking-[0.14em] transition",
+        active
+          ? "bg-[rgb(var(--fg))] text-[rgb(var(--bg))]"
+          : "text-[rgb(var(--muted))] hover:bg-[rgb(var(--fg)/0.06)] hover:text-[rgb(var(--fg))]",
+      )}
+    >
+      {children}
+    </Link>
   );
 }
 
@@ -100,36 +88,8 @@ function RefreshButton() {
       }}
       aria-label={t(lang, "action.refresh")}
     >
-      <RotateCw className="h-4 w-4" />
+      <RotateCw className="h-3.5 w-3.5" />
       <span className="hidden sm:inline">{t(lang, "action.refresh")}</span>
     </Button>
-  );
-}
-
-function StationDropdown({
-  station,
-  stations,
-  onSelect,
-}: {
-  station: string;
-  stations: string[];
-  onSelect: (next: string) => void;
-}) {
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button type="button" variant="ghost" size="sm">
-          <MapPin className="h-4 w-4 text-[rgb(var(--muted))]" />
-          <span className="max-w-[12rem] truncate">{station}</span>
-                  </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuPanel align="end">
-        {(stations.length ? stations : [station]).map((entry) => (
-          <DropdownMenuItemButton key={entry} onSelect={() => onSelect(entry)}>
-            {entry}
-          </DropdownMenuItemButton>
-        ))}
-      </DropdownMenuPanel>
-    </DropdownMenu>
   );
 }

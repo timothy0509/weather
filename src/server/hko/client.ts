@@ -93,7 +93,11 @@ const currentWeatherSchema = z.object({
         .array(
           z.object({
             place: z.string(),
-            occur: z.boolean().optional(),
+            occur: z.preprocess((value) => {
+              if (value === true || value === "true") return true;
+              if (value === false || value === "false") return false;
+              return undefined;
+            }, z.boolean().optional()),
           }),
         )
         .optional()
@@ -121,22 +125,29 @@ const currentWeatherSchema = z.object({
       endTime: z.string().optional().default(""),
     })
     .optional(),
-  uvindex: z
-    .object({
-      data: z
-        .array(
-          z.object({
-            place: z.string(),
-            value: z.number(),
-            desc: z.string().optional(),
-            message: z.string().optional(),
-          }),
-        )
-        .optional()
-        .default([]),
-      recordDesc: z.string().optional().default(""),
-    })
-    .optional(),
+  uvindex: z.preprocess(
+    (value) => {
+      if (value == null || value === "") return undefined;
+      if (typeof value !== "object" || Array.isArray(value)) return undefined;
+      return value;
+    },
+    z
+      .object({
+        data: z
+          .array(
+            z.object({
+              place: z.string(),
+              value: z.number(),
+              desc: z.string().optional(),
+              message: z.string().optional(),
+            }),
+          )
+          .optional()
+          .default([]),
+        recordDesc: z.string().optional().default(""),
+      })
+      .optional(),
+  ),
 });
 
 const forecastDaySchema = z.object({
@@ -206,6 +217,19 @@ export type Forecast = z.infer<typeof forecastSchema>;
 export type LocalForecast = z.infer<typeof localForecastSchema>;
 export type HourlyRainfall = z.infer<typeof hourlyRainfallSchema>;
 
+async function parseResponseJson(response: Response) {
+  if (!response.ok) {
+    throw new HkoError(`HKO request failed: ${response.statusText}`, response.status);
+  }
+
+  const text = await response.text();
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    throw new HkoError(`HKO returned non-JSON response: ${text.slice(0, 180)}`);
+  }
+}
+
 async function fetchJson(fetcher: Fetcher, url: string) {
   const response = await fetcher(url, {
     headers: {
@@ -215,11 +239,7 @@ async function fetchJson(fetcher: Fetcher, url: string) {
     cache: "no-store",
   });
 
-  if (!response.ok) {
-    throw new HkoError(`HKO request failed: ${response.statusText}`, response.status);
-  }
-
-  return response.json();
+  return parseResponseJson(response);
 }
 
 export async function fetchCurrentWeather(fetcher: Fetcher, lang: Language) {
@@ -280,7 +300,9 @@ export type WarningSummary = z.infer<typeof warningSummarySchema>;
 export async function fetchWarningSummary(fetcher: Fetcher, lang: Language) {
   const url = `${WEATHER_ENDPOINT}?dataType=warnsum&lang=${lang}`;
   const json = await fetchJson(fetcher, url);
-  return warningSummarySchema.parse(json);
+  const normalized =
+    json == null || json === "" || Array.isArray(json) ? {} : json;
+  return warningSummarySchema.parse(normalized);
 }
 
 export async function fetchHourlyRainfall(fetcher: Fetcher, lang: Language) {
@@ -289,11 +311,33 @@ export async function fetchHourlyRainfall(fetcher: Fetcher, lang: Language) {
   return hourlyRainfallSchema.parse(json);
 }
 
+const swtItemSchema = z.union([
+  z.string(),
+  z.object({
+    desc: z.string().optional().default(""),
+    updateTime: z.string().optional(),
+  }),
+]);
+
 const specialWeatherTipsSchema = z.object({
-  swt: z.array(z.string()).optional().default([]),
+  swt: z
+    .preprocess((value) => {
+      if (value == null || value === "") return [];
+      if (Array.isArray(value)) return value;
+      return [];
+    }, z.array(swtItemSchema))
+    .optional()
+    .default([]),
 });
 
 export type SpecialWeatherTips = z.infer<typeof specialWeatherTipsSchema>;
+
+export function tipsFromSwt(swt: SpecialWeatherTips["swt"]): string[] {
+  return swt
+    .map((item) => (typeof item === "string" ? item : item.desc))
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
 
 export async function fetchSpecialWeatherTips(fetcher: Fetcher, lang: Language) {
   const url = `${WEATHER_ENDPOINT}?dataType=swt&lang=${lang}`;
@@ -359,6 +403,25 @@ const openDataTableSchema = z.object({
 
 export type OpenDataTable = z.infer<typeof openDataTableSchema>;
 
+function normalizeOpenDataTable(json: unknown): OpenDataTable {
+  if (json != null && typeof json === "object" && !Array.isArray(json)) {
+    const record = json as Record<string, unknown>;
+    if (Array.isArray(record.fields) && Array.isArray(record.data)) {
+      return openDataTableSchema.parse(json);
+    }
+
+    return {
+      fields: ["Key", "Value"],
+      data: Object.entries(record).map(([key, value]) => [
+        key,
+        typeof value === "string" || typeof value === "number" ? value : JSON.stringify(value),
+      ]),
+    };
+  }
+
+  return openDataTableSchema.parse(json);
+}
+
 export async function fetchOpenDataTable(
   fetcher: Fetcher,
   input: {
@@ -370,6 +433,7 @@ export async function fetchOpenDataTable(
     day?: number;
     hour?: number;
     lang?: Language;
+    date?: string;
   },
 ) {
   const params = new URLSearchParams();
@@ -383,6 +447,7 @@ export async function fetchOpenDataTable(
   if (typeof input.day === "number") params.set("day", String(input.day));
   if (typeof input.hour === "number") params.set("hour", String(input.hour));
   if (input.lang) params.set("lang", input.lang);
+  if (input.date) params.set("date", input.date);
 
   const url = `${OPENDATA_ENDPOINT}?${params.toString()}`;
 
@@ -394,16 +459,6 @@ export async function fetchOpenDataTable(
     cache: "no-store",
   });
 
-  if (!response.ok) {
-    throw new HkoError(`HKO request failed: ${response.statusText}`, response.status);
-  }
-
-  const contentType = response.headers.get("content-type") ?? "";
-  if (!contentType.includes("application/json")) {
-    const text = await response.text();
-    throw new HkoError(`HKO returned non-JSON response: ${text.slice(0, 180)}`);
-  }
-
-  const json = await response.json();
-  return openDataTableSchema.parse(json);
+  const json = await parseResponseJson(response);
+  return normalizeOpenDataTable(json);
 }

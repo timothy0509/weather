@@ -22,15 +22,16 @@ export function Button({
   return (
     <Component
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-xl font-medium transition",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--accent)/0.45)] focus-visible:ring-offset-0",
+        "inline-flex items-center justify-center gap-2 rounded-[var(--radius)] font-medium transition",
+        "font-data tracking-wide",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--signal-teal)/0.5)] focus-visible:ring-offset-2 focus-visible:ring-offset-[rgb(var(--bg))]",
         "disabled:pointer-events-none disabled:opacity-50",
-        size === "md" && "h-10 px-4 text-sm",
-        size === "sm" && "h-9 px-3 text-sm",
+        size === "md" && "h-9 px-3 text-xs",
+        size === "sm" && "h-8 px-2.5 text-xs",
         variant === "solid" &&
-          "bg-[rgb(var(--accent))] text-[rgb(var(--accent-fg))] shadow-[0_10px_30px_-18px_rgb(var(--shadow)/0.65)] hover:brightness-105 active:brightness-95",
+          "bg-[rgb(var(--fg))] text-[rgb(var(--bg))] hover:bg-[rgb(var(--fg)/0.88)]",
         variant === "ghost" &&
-          "bg-transparent text-[rgb(var(--fg))] hover:bg-[rgb(var(--fg)/0.06)] active:bg-[rgb(var(--fg)/0.10)]",
+          "bg-transparent text-[rgb(var(--fg))] hover:bg-[rgb(var(--fg)/0.06)]",
         className,
       )}
       {...props}

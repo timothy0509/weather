@@ -11,6 +11,7 @@ import {
   fetchSpecialWeatherTips,
   fetchWarningInfo,
   fetchWarningSummary,
+  tipsFromSwt,
   type Fetcher,
   type OpenDataTable,
 } from "@/server/hko/client";
@@ -24,7 +25,12 @@ import {
   getStations,
   getStationTemperature,
   mergeWarnings,
+  parseSunTimes,
+  type SunTimes,
 } from "@/server/hko/normalize";
+import type { RadarRange } from "@/lib/hko-radar";
+import { fetchRadar, type RadarResult } from "@/server/hko/radar";
+import { fetchTcTrack, type TcTrackResult } from "@/server/hko/tc-track";
 
 const cache = createTtlCache();
 
@@ -89,6 +95,14 @@ export type HkoEarthquakeResult = {
 export type HkoLunarDateResult = Awaited<ReturnType<typeof fetchLunarDate>>;
 
 export type HkoOpenDataResult = OpenDataTable;
+
+export type HkoSunTimesResult = SunTimes | null;
+
+export type HkoTideResult = OpenDataTable;
+
+export type HkoRadarResult = RadarResult;
+
+export type HkoTcTrackResult = TcTrackResult;
 
 export type HkoWarningsResult = ReturnType<typeof mergeWarnings>;
 
@@ -257,7 +271,7 @@ export function createHkoService(fetcher: Fetcher) {
         fetchSpecialWeatherTips(fetcher, lang),
       );
 
-      return { tips: result.swt };
+      return { tips: tipsFromSwt(result.swt) };
     },
 
     earthquake: async (): Promise<HkoEarthquakeResult> => {
@@ -282,6 +296,7 @@ export function createHkoService(fetcher: Fetcher) {
         day?: number;
         hour?: number;
         lang?: Language;
+        date?: string;
       },
     ): Promise<HkoOpenDataResult> => {
       const key = [
@@ -293,11 +308,79 @@ export function createHkoService(fetcher: Fetcher) {
         input.day ?? "",
         input.hour ?? "",
         input.lang ?? "",
+        input.date ?? "",
       ].join(":");
 
       return cached(key, 10 * 60_000, () =>
         fetchOpenDataTable(fetcher, { ...input, rformat: "json" }),
       );
+    },
+
+    sunTimes: async (
+      lang: Language,
+      year: number,
+      month: number,
+      day: number,
+    ): Promise<HkoSunTimesResult> => {
+      const key = `sunTimes:${year}:${month}:${day}:${lang}`;
+      const table = await cached(key, 24 * 60 * 60_000, () =>
+        fetchOpenDataTable(fetcher, {
+          dataType: "SRS",
+          year,
+          month,
+          day,
+          lang,
+          rformat: "json",
+        }),
+      );
+
+      return parseSunTimes(table.fields, table.data);
+    },
+
+    tideHeights: async (
+      station: string,
+      year: number,
+      month: number,
+      day: number,
+    ): Promise<HkoTideResult> => {
+      const key = `tideHeights:${station}:${year}:${month}:${day}`;
+      return cached(key, 60 * 60_000, () =>
+        fetchOpenDataTable(fetcher, {
+          dataType: "HHOT",
+          station,
+          year,
+          month,
+          day,
+          rformat: "json",
+        }),
+      );
+    },
+
+    tideTimes: async (
+      station: string,
+      year: number,
+      month: number,
+      day: number,
+    ): Promise<HkoTideResult> => {
+      const key = `tideTimes:${station}:${year}:${month}:${day}`;
+      return cached(key, 60 * 60_000, () =>
+        fetchOpenDataTable(fetcher, {
+          dataType: "HLT",
+          station,
+          year,
+          month,
+          day,
+          rformat: "json",
+        }),
+      );
+    },
+
+    radar: async (range: RadarRange = "128"): Promise<HkoRadarResult> => {
+      return cached(`radar:${range}`, 3 * 60_000, () => fetchRadar(fetcher, range));
+    },
+
+    tcTrack: async (): Promise<HkoTcTrackResult> => {
+      return cached("tcTrack", 5 * 60_000, () => fetchTcTrack(fetcher));
     },
   };
 }

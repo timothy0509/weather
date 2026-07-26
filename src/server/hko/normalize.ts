@@ -37,8 +37,8 @@ export function getDistrictRainfall(current: CurrentWeather): RainfallValue[] {
     .map((entry) => ({
       label: entry.place,
       amountMm: entry.max ?? null,
-      status:
-        entry.main === true || entry.main === "TRUE" ? ("maintenance" as const) : ("ok" as const),
+      // `main` marks the primary district reading, not maintenance.
+      status: "ok" as const,
     }))
     .sort((a, b) => a.label.localeCompare(b.label));
 }
@@ -76,6 +76,32 @@ export function getLocalForecastText(local: LocalForecast) {
     forecastDesc: local.forecastDesc,
     outlook: local.outlook,
     updateTime: local.updateTime,
+  };
+}
+
+export type SunTimes = {
+  date: string;
+  rise: string;
+  transit: string;
+  set: string;
+};
+
+export function parseSunTimes(fields: string[], rows: unknown[][]): SunTimes | null {
+  if (!rows.length) return null;
+
+  const row = rows[0];
+  const dateIdx = fields.findIndex((f) => f.toUpperCase().includes("YYYY"));
+  const riseIdx = fields.findIndex((f) => f.toUpperCase() === "RISE");
+  const transitIdx = fields.findIndex((f) => f.toUpperCase().includes("TRAN"));
+  const setIdx = fields.findIndex((f) => f.toUpperCase() === "SET");
+
+  if (dateIdx < 0) return null;
+
+  return {
+    date: String(row[dateIdx] ?? ""),
+    rise: riseIdx >= 0 ? String(row[riseIdx] ?? "") : "",
+    transit: transitIdx >= 0 ? String(row[transitIdx] ?? "") : "",
+    set: setIdx >= 0 ? String(row[setIdx] ?? "") : "",
   };
 }
 

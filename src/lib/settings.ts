@@ -9,6 +9,17 @@ export const LANGUAGES: { value: Language; label: string }[] = [
 export const DEFAULT_LANGUAGE: Language = "en";
 export const DEFAULT_STATION = "Hong Kong Observatory";
 
+const LANGUAGE_SET = new Set<string>(LANGUAGES.map((entry) => entry.value));
+
+export function isLanguage(value: string): value is Language {
+  return LANGUAGE_SET.has(value);
+}
+
+export function parseLanguage(value: string | null | undefined, fallback: Language = DEFAULT_LANGUAGE): Language {
+  if (value && isLanguage(value)) return value;
+  return fallback;
+}
+
 export function readStoredString(key: string, fallback: string): string {
   if (typeof window === "undefined") return fallback;
   return window.localStorage.getItem(key) ?? fallback;

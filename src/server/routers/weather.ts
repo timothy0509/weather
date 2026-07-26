@@ -2,10 +2,44 @@ import { z } from "zod";
 
 import { DEFAULT_STATION, type Language } from "@/lib/settings";
 import { fetchWithTimeout } from "@/server/hko/fetcher";
-import { createHkoService } from "@/server/hko/service";
+import {
+  createHkoService,
+  type HkoForecastResult,
+  type HkoLocalForecastResult,
+  type HkoNowResult,
+  type HkoRadarResult,
+  type HkoSpecialWeatherTipsResult,
+  type HkoSunTimesResult,
+  type HkoTcTrackResult,
+  type HkoTideResult,
+  type HkoWarningsResult,
+} from "@/server/hko/service";
+import type { RadarRange } from "@/lib/hko-radar";
 import { publicProcedure, router } from "@/server/trpc";
 
 const languageSchema = z.union([z.literal("en"), z.literal("tc"), z.literal("sc")]);
+
+function errorMessage(error: unknown): string {
+  if (error instanceof Error && error.message) return error.message;
+  return "Unknown error";
+}
+
+export type DashboardSectionErrors = {
+  now?: string;
+  forecast9d?: string;
+  warnings?: string;
+  localForecast?: string;
+  swt?: string;
+};
+
+export type DashboardResult = {
+  now: HkoNowResult | null;
+  forecast9d: HkoForecastResult | null;
+  warnings: HkoWarningsResult | null;
+  localForecast: HkoLocalForecastResult | null;
+  swt: HkoSpecialWeatherTipsResult | null;
+  errors: DashboardSectionErrors;
+};
 
 export const weatherRouter = router({
   dashboard: publicProcedure
@@ -15,10 +49,11 @@ export const weatherRouter = router({
         station: z.string().default(DEFAULT_STATION),
       }),
     )
-    .query(async ({ input }) => {
+    .query(async ({ input }): Promise<DashboardResult> => {
       const service = createHkoService(fetchWithTimeout(fetch, 8000));
       const lang = input.lang as Language;
-      const [now, forecast9d, warnings, localForecast, swt] = await Promise.all([
+
+      const [now, forecast9d, warnings, localForecast, swt] = await Promise.allSettled([
         service.now(lang, input.station),
         service.forecast9d(lang),
         service.warnings(lang),
@@ -26,7 +61,24 @@ export const weatherRouter = router({
         service.specialWeatherTips(lang),
       ]);
 
-      return { now, forecast9d, warnings, localForecast, swt };
+      const errors: DashboardSectionErrors = {};
+
+      if (now.status === "rejected") errors.now = errorMessage(now.reason);
+      if (forecast9d.status === "rejected") errors.forecast9d = errorMessage(forecast9d.reason);
+      if (warnings.status === "rejected") errors.warnings = errorMessage(warnings.reason);
+      if (localForecast.status === "rejected") {
+        errors.localForecast = errorMessage(localForecast.reason);
+      }
+      if (swt.status === "rejected") errors.swt = errorMessage(swt.reason);
+
+      return {
+        now: now.status === "fulfilled" ? now.value : null,
+        forecast9d: forecast9d.status === "fulfilled" ? forecast9d.value : null,
+        warnings: warnings.status === "fulfilled" ? warnings.value : null,
+        localForecast: localForecast.status === "fulfilled" ? localForecast.value : null,
+        swt: swt.status === "fulfilled" ? swt.value : null,
+        errors,
+      };
     }),
 
   now: publicProcedure
@@ -112,6 +164,10 @@ export const weatherRouter = router({
         day: z.number().int().optional(),
         hour: z.number().int().optional(),
         lang: languageSchema.optional(),
+        date: z
+          .string()
+          .regex(/^\d{8}$/)
+          .optional(),
       }),
     )
     .query(async ({ input }) => {
@@ -124,6 +180,65 @@ export const weatherRouter = router({
         day: input.day,
         hour: input.hour,
         lang: input.lang as Language | undefined,
+        date: input.date,
       });
     }),
+
+  sunTimes: publicProcedure
+    .input(
+      z.object({
+        lang: languageSchema.default("en"),
+        year: z.number().int(),
+        month: z.number().int().min(1).max(12),
+        day: z.number().int().min(1).max(31),
+      }),
+    )
+    .query(async ({ input }): Promise<HkoSunTimesResult> => {
+      const service = createHkoService(fetchWithTimeout(fetch, 8000));
+      return service.sunTimes(input.lang as Language, input.year, input.month, input.day);
+    }),
+
+  tideHeights: publicProcedure
+    .input(
+      z.object({
+        station: z.string().default("QUB"),
+        year: z.number().int(),
+        month: z.number().int().min(1).max(12),
+        day: z.number().int().min(1).max(31),
+      }),
+    )
+    .query(async ({ input }): Promise<HkoTideResult> => {
+      const service = createHkoService(fetchWithTimeout(fetch, 8000));
+      return service.tideHeights(input.station, input.year, input.month, input.day);
+    }),
+
+  tideTimes: publicProcedure
+    .input(
+      z.object({
+        station: z.string().default("QUB"),
+        year: z.number().int(),
+        month: z.number().int().min(1).max(12),
+        day: z.number().int().min(1).max(31),
+      }),
+    )
+    .query(async ({ input }): Promise<HkoTideResult> => {
+      const service = createHkoService(fetchWithTimeout(fetch, 8000));
+      return service.tideTimes(input.station, input.year, input.month, input.day);
+    }),
+
+  radar: publicProcedure
+    .input(
+      z.object({
+        range: z.enum(["256", "128", "64", "64-2km"]).default("128"),
+      }),
+    )
+    .query(async ({ input }): Promise<HkoRadarResult> => {
+      const service = createHkoService(fetchWithTimeout(fetch, 8000));
+      return service.radar(input.range as RadarRange);
+    }),
+
+  tcTrack: publicProcedure.query(async (): Promise<HkoTcTrackResult> => {
+    const service = createHkoService(fetchWithTimeout(fetch, 8000));
+    return service.tcTrack();
+  }),
 });

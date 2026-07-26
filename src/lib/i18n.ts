@@ -28,7 +28,29 @@ export type I18nKey =
   | "action.toggle_theme"
   | "label.theme_light"
   | "label.theme_dark"
-  | "label.maintenance";
+  | "label.maintenance"
+  | "label.lightning"
+  | "label.lightning.active"
+  | "label.rain_probability"
+  | "label.wind"
+  | "label.sea_temp"
+  | "label.soil_temp"
+  | "label.mintemp_00_09"
+  | "label.rainfall_00_12"
+  | "label.rainfall_last_month"
+  | "label.rainfall_ytd"
+  | "label.sunrise"
+  | "label.sun_transit"
+  | "label.sunset"
+  | "label.tides"
+  | "label.tide_heights"
+  | "label.tide_times"
+  | "label.radar"
+  | "label.typhoon"
+  | "label.typhoon.view_map"
+  | "nav.board"
+  | "nav.explore"
+  | "nav.radar";
 
 type Dict = Record<I18nKey, string>;
 
@@ -62,6 +84,28 @@ const DICTS: Record<Language, Dict> = {
     "label.theme_light": "Light",
     "label.theme_dark": "Dark",
     "label.maintenance": "Maintenance",
+    "label.lightning": "Lightning",
+    "label.lightning.active": "Lightning detected",
+    "label.rain_probability": "Rain",
+    "label.wind": "Wind",
+    "label.sea_temp": "Sea temp",
+    "label.soil_temp": "Soil temp",
+    "label.mintemp_00_09": "Min temp 00–09",
+    "label.rainfall_00_12": "Rainfall 00–12",
+    "label.rainfall_last_month": "Last month",
+    "label.rainfall_ytd": "Since Jan",
+    "label.sunrise": "Sunrise",
+    "label.sun_transit": "Solar noon",
+    "label.sunset": "Sunset",
+    "label.tides": "Tides",
+    "label.tide_heights": "Hourly heights",
+    "label.tide_times": "High / low",
+    "label.radar": "Radar",
+    "label.typhoon": "Tropical cyclone",
+    "label.typhoon.view_map": "View track map",
+    "nav.board": "Board",
+    "nav.explore": "Explore",
+    "nav.radar": "Radar",
   },
   tc: {
     "app.title": "TimoWeather",
@@ -92,6 +136,28 @@ const DICTS: Record<Language, Dict> = {
     "label.theme_light": "淺色",
     "label.theme_dark": "深色",
     "label.maintenance": "維修",
+    "label.lightning": "雷電",
+    "label.lightning.active": "偵測到雷電",
+    "label.rain_probability": "大雨機會",
+    "label.wind": "風",
+    "label.sea_temp": "海水溫度",
+    "label.soil_temp": "土壤溫度",
+    "label.mintemp_00_09": "凌晨最低溫",
+    "label.rainfall_00_12": "上午雨量",
+    "label.rainfall_last_month": "上月雨量",
+    "label.rainfall_ytd": "年初至今",
+    "label.sunrise": "日出",
+    "label.sun_transit": "日中天",
+    "label.sunset": "日落",
+    "label.tides": "潮汐",
+    "label.tide_heights": "每小時潮高",
+    "label.tide_times": "高低潮",
+    "label.radar": "雷達",
+    "label.typhoon": "熱帶氣旋",
+    "label.typhoon.view_map": "查看路徑圖",
+    "nav.board": "主頁",
+    "nav.explore": "探索",
+    "nav.radar": "雷達",
   },
   sc: {
     "app.title": "TimoWeather",
@@ -122,6 +188,28 @@ const DICTS: Record<Language, Dict> = {
     "label.theme_light": "浅色",
     "label.theme_dark": "深色",
     "label.maintenance": "维护",
+    "label.lightning": "雷电",
+    "label.lightning.active": "检测到雷电",
+    "label.rain_probability": "大雨机会",
+    "label.wind": "风",
+    "label.sea_temp": "海水温度",
+    "label.soil_temp": "土壤温度",
+    "label.mintemp_00_09": "凌晨最低温",
+    "label.rainfall_00_12": "上午雨量",
+    "label.rainfall_last_month": "上月雨量",
+    "label.rainfall_ytd": "年初至今",
+    "label.sunrise": "日出",
+    "label.sun_transit": "日中天",
+    "label.sunset": "日落",
+    "label.tides": "潮汐",
+    "label.tide_heights": "每小时潮高",
+    "label.tide_times": "高低潮",
+    "label.radar": "雷达",
+    "label.typhoon": "热带气旋",
+    "label.typhoon.view_map": "查看路径图",
+    "nav.board": "主页",
+    "nav.explore": "探索",
+    "nav.radar": "雷达",
   },
 };
 

@@ -5,303 +5,454 @@ import { useEffect, useMemo } from "react";
 import { api } from "@/app/providers";
 import { AppShell } from "@/components/app-shell";
 import { RainfallPanel } from "@/components/rainfall-panel";
+import { SignalStrip } from "@/components/signal-strip";
 import { useStationContext } from "@/components/station-provider";
 import { Topbar } from "@/components/topbar";
-import { WarningsDrawer } from "@/components/warnings-drawer";
-import { TriangleAlert } from "lucide-react";
-
+import { Button } from "@/components/ui/button";
 import { getHkoWeatherVisual } from "@/lib/hko-icons";
 import { t } from "@/lib/i18n";
-import { formatHktDateTime } from "@/lib/time";
-import { getTempTone } from "@/lib/weather-visual";
+import { formatHktDateTime, getHktDateParts } from "@/lib/time";
+import { getTempTone, toneColor } from "@/lib/weather-visual";
 
-import { Card } from "@/components/ui/card";
+function SectionError({
+  message,
+  onRetry,
+  retryLabel,
+}: {
+  message: string;
+  onRetry: () => void;
+  retryLabel: string;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 border border-[rgb(var(--signal-red)/0.35)] bg-[rgb(var(--signal-red)/0.08)] px-3 py-2 text-sm">
+      <span>{message}</span>
+      <Button type="button" variant="ghost" size="sm" onClick={onRetry}>
+        {retryLabel}
+      </Button>
+    </div>
+  );
+}
 
 export default function Home() {
   const { lang, station } = useStationContext();
+  const hktToday = useMemo(() => getHktDateParts(), []);
 
   const dashboardQuery = api.weather.dashboard.useQuery(
     { lang, station },
     { staleTime: 30_000, refetchInterval: 60_000 },
   );
 
+  const sunTimesQuery = api.weather.sunTimes.useQuery({
+    lang,
+    year: hktToday.year,
+    month: hktToday.month,
+    day: hktToday.day,
+  });
+
   const now = dashboardQuery.data?.now;
   const forecast = dashboardQuery.data?.forecast9d;
-   const warnings = dashboardQuery.data?.warnings;
-   const localForecast = dashboardQuery.data?.localForecast;
-   const swt = dashboardQuery.data?.swt;
+  const warnings = dashboardQuery.data?.warnings ?? [];
+  const localForecast = dashboardQuery.data?.localForecast;
+  const swt = dashboardQuery.data?.swt;
+  const errors = dashboardQuery.data?.errors;
 
+  const hasTcWarning = useMemo(
+    () => warnings.some((w) => w.key === "WTCSGNL" || w.code?.startsWith("TC")),
+    [warnings],
+  );
+
+  const tcTrackQuery = api.weather.tcTrack.useQuery(undefined, {
+    enabled: hasTcWarning,
+    staleTime: 5 * 60_000,
+  });
 
   const previewDays = useMemo(() => (forecast?.days ?? []).slice(0, 9), [forecast?.days]);
 
   const tempC = now?.temperature?.value ?? null;
   const tempTone = useMemo(() => getTempTone(tempC), [tempC]);
 
+  const hasLightning = useMemo(() => {
+    if (!now?.lightning?.data?.length) return false;
+    return now.lightning.data.some((entry) => entry.occur);
+  }, [now?.lightning?.data]);
+
+  const nowStats = useMemo(() => {
+    if (!now) return [];
+    const items: { label: string; value: string }[] = [];
+    if (now.mintempFrom00To09) {
+      items.push({ label: t(lang, "label.mintemp_00_09"), value: now.mintempFrom00To09 });
+    }
+    if (now.rainfallFrom00To12) {
+      items.push({ label: t(lang, "label.rainfall_00_12"), value: now.rainfallFrom00To12 });
+    }
+    if (now.rainfallLastMonth) {
+      items.push({ label: t(lang, "label.rainfall_last_month"), value: now.rainfallLastMonth });
+    }
+    if (now.rainfallJanuaryToLastMonth) {
+      items.push({ label: t(lang, "label.rainfall_ytd"), value: now.rainfallJanuaryToLastMonth });
+    }
+    return items;
+  }, [lang, now]);
+
   useEffect(() => {
     const onRefresh = () => {
       void dashboardQuery.refetch();
+      void sunTimesQuery.refetch();
+      if (hasTcWarning) void tcTrackQuery.refetch();
     };
 
     window.addEventListener("tw:refresh", onRefresh);
     return () => window.removeEventListener("tw:refresh", onRefresh);
-  }, [dashboardQuery]);
+  }, [dashboardQuery, hasTcWarning, sunTimesQuery, tcTrackQuery]);
 
   const nowVisual = useMemo(() => {
     return getHkoWeatherVisual(now?.iconCode ?? null);
   }, [now?.iconCode]);
 
+  const retry = () => void dashboardQuery.refetch();
+  const retryLabel = t(lang, "action.retry");
+
   return (
     <AppShell header={<Topbar />}>
-      <div className="grid gap-4 lg:grid-cols-12">
-        <Card className="p-6 lg:col-span-7">
-          <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
-            <div className="flex items-start gap-4">
-              <div
-                className="relative mt-1 flex h-12 w-12 items-center justify-center rounded-2xl border border-[rgb(var(--border))]"
-                style={{ background: `rgb(var(--wx-${tempTone}) / 0.16)` }}
-              >
-                <nowVisual.Icon
-                  className="h-6 w-6"
-                  style={{ color: `rgb(var(--wx-${tempTone}))` }}
-                />
-              </div>
+      <div className="space-y-8">
+        {errors?.warnings ? (
+          <SectionError
+            message="HKO warnings unavailable"
+            onRetry={retry}
+            retryLabel={retryLabel}
+          />
+        ) : (
+          <SignalStrip warnings={warnings} tips={errors?.swt ? undefined : swt?.tips} />
+        )}
 
-              <div className="min-w-0">
-                <div className="text-sm text-[rgb(var(--muted))]">{t(lang, "label.now")} · {station}</div>
+        {errors?.swt ? (
+          <SectionError
+            message="HKO tips unavailable"
+            onRetry={retry}
+            retryLabel={retryLabel}
+          />
+        ) : null}
+
+        {hasTcWarning && tcTrackQuery.data?.cyclones.length ? (
+          <section className="border border-[rgb(var(--signal-red)/0.35)] bg-[rgb(var(--signal-red)/0.06)] p-4">
+            <div className="section-label">{t(lang, "label.typhoon")}</div>
+            <div className="mt-3 space-y-4">
+              {tcTrackQuery.data.cyclones.map((cyclone) => {
+                const latest = cyclone.latestPast ?? cyclone.latestForecast;
+                return (
+                  <div key={cyclone.id} className="text-sm">
+                    <div className="font-display text-xl font-bold">
+                      {cyclone.englishName}
+                      {cyclone.chineseName ? (
+                        <span className="ml-2 font-normal text-[rgb(var(--muted))]">
+                          {cyclone.chineseName}
+                        </span>
+                      ) : null}
+                    </div>
+                    {latest ? (
+                      <div className="mt-2 space-y-1 text-[rgb(var(--muted))]">
+                        <div>{latest.intensity}</div>
+                        <div>
+                          {latest.maximumWind} · {latest.latitude} {latest.longitude}
+                        </div>
+                        {latest.time ? (
+                          <div className="font-data text-xs">
+                            {formatHktDateTime(latest.time)}
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
+                    <a
+                      href="https://www.hko.gov.hk/en/wxinfo/currwx/tc_gis.htm"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-2 inline-block font-data text-xs uppercase tracking-[0.1em] text-[rgb(var(--signal-teal))] hover:underline"
+                    >
+                      {t(lang, "label.typhoon.view_map")}
+                    </a>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        ) : null}
+
+        <section className="border-b border-[rgb(var(--rule))] pb-8">
+          <div className="section-label">{t(lang, "label.now")}</div>
+
+          {errors?.now ? (
+            <div className="mt-3">
+              <SectionError
+                message="Current observation unavailable"
+                onRetry={retry}
+                retryLabel={retryLabel}
+              />
+            </div>
+          ) : (
+            <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+              <div>
                 <div
-                  className="mt-2 text-5xl font-semibold tracking-tight"
-                  style={{ color: `rgb(var(--wx-${tempTone}))` }}
+                  className="anim-temp font-display text-7xl font-extrabold leading-none tracking-tight sm:text-8xl"
+                  style={{ color: toneColor(tempTone) }}
                 >
                   {dashboardQuery.isLoading ? (
-                    <span className="inline-block h-12 w-36 animate-pulse rounded-2xl bg-[rgb(var(--fg)/0.06)]" />
+                    <span className="inline-block h-16 w-40 animate-pulse bg-[rgb(var(--fg)/0.08)]" />
                   ) : now?.temperature ? (
-                    `${now.temperature.value}°`
+                    <>
+                      {now.temperature.value}
+                      <span className="text-4xl">°</span>
+                    </>
                   ) : (
                     "—"
                   )}
                 </div>
-                <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-[rgb(var(--muted))]">
-                  <span className="inline-flex items-center gap-2">
-                    <nowVisual.Icon className="h-4 w-4" />
-                    {nowVisual.label}
-                  </span>
-                  {now?.humidity ? (
-                    <span>
-                      {t(lang, "label.humidity")} {now.humidity.value}
-                      {now.humidity.unit}
-                    </span>
-                  ) : null}
-                  {now?.updateTime ? (
-                    <span>
-                      {t(lang, "label.updated")} {formatHktDateTime(now.updateTime)}
-                    </span>
-                  ) : null}
+                <div className="mt-3 font-data text-sm text-[rgb(var(--muted))]">
+                  {station}
                 </div>
               </div>
-            </div>
-          </div>
 
-          {dashboardQuery.error ? (
-            <div className="mt-4 flex items-center justify-between gap-3 text-sm text-red-500">
-              <span>Failed to load weather data.</span>
-              <button
-                type="button"
-                className="rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--fg)/0.04)] px-3 py-1.5 text-xs text-[rgb(var(--fg))]"
-                onClick={() => dashboardQuery.refetch()}
-              >
-                {t(lang, "action.retry")}
-              </button>
+              <div className="space-y-1 font-data text-xs uppercase tracking-[0.12em] text-[rgb(var(--muted))] sm:text-right">
+                <div className="flex items-center gap-2 sm:justify-end normal-case tracking-normal text-sm text-[rgb(var(--fg))]">
+                  <nowVisual.Icon className="h-4 w-4" style={{ color: toneColor(tempTone) }} />
+                  {nowVisual.label}
+                </div>
+                {now?.humidity ? (
+                  <div>
+                    {t(lang, "label.humidity")} {now.humidity.value}
+                    {now.humidity.unit}
+                  </div>
+                ) : null}
+                {now?.uvIndex ? (
+                  <div>
+                    UV {now.uvIndex.value}
+                    {now.uvIndex.desc ? ` · ${now.uvIndex.desc}` : ""}
+                  </div>
+                ) : null}
+                {now?.updateTime ? (
+                  <div>
+                    {t(lang, "label.updated")} {formatHktDateTime(now.updateTime)}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          )}
+
+          {!errors?.now && (hasLightning || nowStats.length > 0 || now?.tcMessage?.length) ? (
+            <div className="mt-4 space-y-2">
+              {hasLightning ? (
+                <div className="border-l-4 border-[rgb(var(--signal-amber))] bg-[rgb(var(--signal-amber)/0.1)] px-4 py-2 text-sm">
+                  {t(lang, "label.lightning.active")}
+                </div>
+              ) : null}
+              {now?.tcMessage?.map((line, index) => (
+                <div
+                  key={`tc-${index}`}
+                  className="border-l-4 border-[rgb(var(--signal-red))] bg-[rgb(var(--signal-red)/0.06)] px-4 py-2 text-sm leading-relaxed"
+                >
+                  {line}
+                </div>
+              ))}
+              {nowStats.length > 0 ? (
+                <div className="flex flex-wrap gap-x-6 gap-y-1 font-data text-xs text-[rgb(var(--muted))]">
+                  {nowStats.map((stat) => (
+                    <div key={stat.label}>
+                      <span className="uppercase tracking-[0.1em]">{stat.label}</span>{" "}
+                      <span className="text-[rgb(var(--fg))]">{stat.value}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
             </div>
           ) : null}
-        </Card>
 
-        <Card className="p-6 lg:col-span-5">
-          <div className="flex items-center justify-between">
-            <div className="text-sm font-semibold">{t(lang, "label.warnings")}</div>
-            <div className="text-xs text-[rgb(var(--muted))]">
-              {warnings?.length
-                ? `${warnings.length} ${t(lang, "label.warnings.active")}`
-                : t(lang, "label.warnings.none")}
+          {sunTimesQuery.data ? (
+            <div className="mt-4 flex flex-wrap gap-x-6 gap-y-1 font-data text-xs text-[rgb(var(--muted))]">
+              {sunTimesQuery.data.rise ? (
+                <div>
+                  <span className="uppercase tracking-[0.1em]">{t(lang, "label.sunrise")}</span>{" "}
+                  <span className="text-[rgb(var(--fg))]">{sunTimesQuery.data.rise}</span>
+                </div>
+              ) : null}
+              {sunTimesQuery.data.transit ? (
+                <div>
+                  <span className="uppercase tracking-[0.1em]">{t(lang, "label.sun_transit")}</span>{" "}
+                  <span className="text-[rgb(var(--fg))]">{sunTimesQuery.data.transit}</span>
+                </div>
+              ) : null}
+              {sunTimesQuery.data.set ? (
+                <div>
+                  <span className="uppercase tracking-[0.1em]">{t(lang, "label.sunset")}</span>{" "}
+                  <span className="text-[rgb(var(--fg))]">{sunTimesQuery.data.set}</span>
+                </div>
+              ) : null}
             </div>
-          </div>
-          <div className="mt-4 space-y-2">
-            {dashboardQuery.isLoading ? (
-              <div className="h-10 animate-pulse rounded-2xl bg-[rgb(var(--fg)/0.06)]" />
-) : warnings?.length ? (
-               warnings.slice(0, 3).map((warning) => (
+          ) : null}
+        </section>
 
-                 <div
-                   key={warning.key}
-                   className="rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--fg)/0.03)] px-4 py-3"
-                 >
-                   <div className="flex items-start justify-between gap-3">
-                     <div className="flex min-w-0 items-start gap-3">
-                       <div
-                         className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-2xl border border-[rgb(var(--border))]"
-                         style={{ background: "rgb(var(--wx-warm) / 0.12)" }}
-                         aria-hidden="true"
-                       >
-                         <TriangleAlert
-                           className="h-4 w-4"
-                           style={{ color: "rgb(var(--wx-warm))" }}
-                         />
-                       </div>
-                       <div className="min-w-0">
-                         <div className="truncate text-sm font-medium">
-                           {warning.name ?? warning.key}
-                         </div>
-                         {warning.contents?.[0] ? (
-                           <div className="mt-1 line-clamp-2 text-xs text-[rgb(var(--muted))]">
-                             {warning.contents[0]}
-                           </div>
-                         ) : null}
-                       </div>
-                     </div>
-                     <WarningsDrawer
-                      warning={warning}
-                      triggerLabel={t(lang, "label.warnings.details")}
-                    />
-                   </div>
-                 </div>
-              ))
-            ) : (
-<div className="text-sm text-[rgb(var(--muted))]">
-                 {t(lang, "label.warnings.none")}.
-               </div>
-            )}
+        <section>
+          <div className="flex items-end justify-between gap-3">
+            <div className="section-label">{t(lang, "label.forecast_9d")}</div>
+            {forecast?.updateTime ? (
+              <div className="font-data text-[0.65rem] text-[rgb(var(--muted))]">
+                {t(lang, "label.updated")} {formatHktDateTime(forecast.updateTime)}
+              </div>
+            ) : null}
           </div>
-        </Card>
 
-        <Card className="p-6 lg:col-span-12">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div className="text-sm font-semibold">{t(lang, "label.forecast_9d")}</div>
-            <div className="text-xs text-[rgb(var(--muted))]">
-              {forecast?.updateTime
-                ? `${t(lang, "label.updated")} ${formatHktDateTime(forecast.updateTime)}`
-                : ""}
+          {errors?.forecast9d ? (
+            <div className="mt-3">
+              <SectionError
+                message="9-day forecast unavailable"
+                onRetry={retry}
+                retryLabel={retryLabel}
+              />
             </div>
-          </div>
-          <div className="mt-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
-            {dashboardQuery.isLoading
-              ? Array.from({ length: 6 }).map((_, index) => (
-                  <div
-                    key={index}
-                    className="h-28 animate-pulse rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--fg)/0.03)]"
-                  />
-                ))
-              : previewDays.map((day) => (
-                  <div
-                    key={day.forecastDate}
-                    className="rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--fg)/0.03)] p-4"
-                  >
-                    <div className="text-xs text-[rgb(var(--muted))]">
-                      {day.week}
-                    </div>
-                    <div className="mt-3 flex items-center justify-between gap-3">
-                      <div>
-                        <div className="text-lg font-semibold">
-                          {day.forecastMaxtemp.value}°
-                        </div>
-<div className="text-xs text-[rgb(var(--muted))]">
-                           {t(lang, "label.low")} {day.forecastMintemp.value}°
-                         </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {(() => {
-                          const visual = getHkoWeatherVisual(day.ForecastIcon ?? null);
-                          return (
+          ) : (
+            <div className="mt-3 -mx-4 overflow-x-auto px-4 pb-1">
+              <div className="flex min-w-max gap-0 border-y border-[rgb(var(--rule))]">
+                {dashboardQuery.isLoading
+                  ? Array.from({ length: 7 }).map((_, index) => (
+                      <div
+                        key={index}
+                        className="h-28 w-28 animate-pulse border-r border-[rgb(var(--rule))] bg-[rgb(var(--fg)/0.04)] last:border-r-0"
+                      />
+                    ))
+                  : previewDays.map((day) => {
+                      const visual = getHkoWeatherVisual(day.ForecastIcon ?? null);
+                      return (
+                        <div
+                          key={day.forecastDate}
+                          className="w-32 shrink-0 border-r border-[rgb(var(--rule))] px-3 py-3 last:border-r-0"
+                        >
+                          <div className="font-data text-[0.65rem] uppercase tracking-[0.1em] text-[rgb(var(--muted))]">
+                            {day.week.slice(0, 3)}
+                          </div>
+                          <div className="mt-2 flex items-center justify-between gap-2">
+                            <div className="font-display text-xl font-bold">
+                              {day.forecastMaxtemp.value}°
+                            </div>
                             <visual.Icon
-                              className="h-5 w-5"
-                              style={{ color: "rgb(var(--wx-cool))" }}
+                              className="h-4 w-4 text-[rgb(var(--signal-teal))]"
                               aria-label={visual.label}
                             />
-                          );
-                        })()}
-                      </div>
-                    </div>
-                    <div className="mt-3 line-clamp-2 text-xs text-[rgb(var(--muted))]">
-                      {day.forecastWeather}
-                    </div>
-                  </div>
-                ))}
-          </div>
+                          </div>
+                          <div className="font-data text-xs text-[rgb(var(--muted))]">
+                            {t(lang, "label.low")} {day.forecastMintemp.value}°
+                          </div>
+                          {day.forecastMinrh && day.forecastMaxrh ? (
+                            <div className="mt-1 font-data text-[0.65rem] text-[rgb(var(--muted))]">
+                              {day.forecastMinrh.value}–{day.forecastMaxrh.value}
+                              {day.forecastMaxrh.unit}
+                            </div>
+                          ) : null}
+                          {day.PSR ? (
+                            <div className="mt-1 font-data text-[0.65rem] uppercase tracking-[0.08em] text-[rgb(var(--signal-teal))]">
+                              {t(lang, "label.rain_probability")}: {day.PSR}
+                            </div>
+                          ) : null}
+                          {day.forecastWind ? (
+                            <div className="mt-1 line-clamp-2 text-[0.65rem] leading-snug text-[rgb(var(--muted))]">
+                              {day.forecastWind}
+                            </div>
+                          ) : null}
+                          <div className="mt-2 line-clamp-2 text-[0.7rem] leading-snug text-[rgb(var(--muted))]">
+                            {day.forecastWeather}
+                          </div>
+                        </div>
+                      );
+                    })}
+              </div>
+            </div>
+          )}
 
-          {dashboardQuery.error ? (
-            <div className="mt-4 flex items-center justify-between gap-3 text-sm text-red-500">
-              <span>Failed to load forecast.</span>
-              <button
-                type="button"
-                className="rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--fg)/0.04)] px-3 py-1.5 text-xs text-[rgb(var(--fg))]"
-                onClick={() => dashboardQuery.refetch()}
-              >
-                {t(lang, "action.retry")}
-              </button>
+          {!errors?.forecast9d && (forecast?.seaTemp || (forecast?.soilTemp?.length ?? 0) > 0) ? (
+            <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 font-data text-xs text-[rgb(var(--muted))]">
+              {forecast?.seaTemp?.value != null ? (
+                <div>
+                  <span className="uppercase tracking-[0.1em]">{t(lang, "label.sea_temp")}</span>{" "}
+                  <span className="text-[rgb(var(--fg))]">
+                    {forecast.seaTemp.value}
+                    {forecast.seaTemp.unit ?? "°C"}
+                    {forecast.seaTemp.place ? ` · ${forecast.seaTemp.place}` : ""}
+                  </span>
+                </div>
+              ) : null}
+              {forecast?.soilTemp?.map((entry, index) =>
+                entry.value != null ? (
+                  <div key={`soil-${index}`}>
+                    <span className="uppercase tracking-[0.1em]">{t(lang, "label.soil_temp")}</span>{" "}
+                    <span className="text-[rgb(var(--fg))]">
+                      {entry.value}
+                      {entry.unit ?? "°C"}
+                      {entry.place ? ` · ${entry.place}` : ""}
+                      {entry.depth?.value != null
+                        ? ` (${entry.depth.value}${entry.depth.unit ?? "cm"})`
+                        : ""}
+                    </span>
+                  </div>
+                ) : null,
+              )}
             </div>
           ) : null}
-        </Card>
+        </section>
 
-         <Card className="p-6 lg:col-span-12">
-           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-             <div className="text-sm font-semibold">Local forecast</div>
-             <div className="text-xs text-[rgb(var(--muted))]">
-               {localForecast?.updateTime ? `${t(lang, "label.updated")} ${formatHktDateTime(localForecast.updateTime)}` : ""}
-             </div>
-           </div>
+        <section className="grid gap-8 lg:grid-cols-12">
+          <div className="lg:col-span-7">
+            <div className="section-label">Local forecast</div>
+            {errors?.localForecast ? (
+              <div className="mt-3">
+                <SectionError
+                  message="Local forecast unavailable"
+                  onRetry={retry}
+                  retryLabel={retryLabel}
+                />
+              </div>
+            ) : (
+              <div className="mt-3 space-y-4">
+                {localForecast?.forecastPeriod ? (
+                  <div className="font-data text-xs uppercase tracking-[0.1em] text-[rgb(var(--muted))]">
+                    {localForecast.forecastPeriod}
+                  </div>
+                ) : null}
+                {dashboardQuery.isLoading ? (
+                  <div className="h-24 animate-pulse bg-[rgb(var(--fg)/0.06)]" />
+                ) : localForecast?.forecastDesc ? (
+                  <p className="text-base leading-relaxed">{localForecast.forecastDesc}</p>
+                ) : (
+                  <p className="text-[rgb(var(--muted))]">—</p>
+                )}
+                {localForecast?.outlook ? (
+                  <p className="text-sm leading-relaxed text-[rgb(var(--muted))]">
+                    {localForecast.outlook}
+                  </p>
+                ) : null}
+                {localForecast?.tcInfo ? (
+                  <p className="border-l-4 border-[rgb(var(--signal-red))] bg-[rgb(var(--signal-red)/0.06)] px-4 py-3 text-sm leading-relaxed">
+                    {localForecast.tcInfo}
+                  </p>
+                ) : null}
+                {localForecast?.fireDangerWarning ? (
+                  <p className="border-l-4 border-[rgb(var(--signal-amber))] bg-[rgb(var(--signal-amber)/0.1)] px-4 py-3 text-sm leading-relaxed">
+                    {localForecast.fireDangerWarning}
+                  </p>
+                ) : null}
+              </div>
+            )}
+          </div>
 
-           <div className="mt-4 grid gap-3 lg:grid-cols-12">
-             <div className="lg:col-span-7">
-               <div className="rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--fg)/0.03)] px-4 py-3 text-sm">
-                 {dashboardQuery.isLoading ? (
-                   <div className="h-16 animate-pulse rounded-xl bg-[rgb(var(--fg)/0.06)]" />
-                 ) : localForecast?.forecastDesc ? (
-                   localForecast.forecastDesc
-                 ) : (
-                   <span className="text-[rgb(var(--muted))]">—</span>
-                 )}
-               </div>
+          <div className="lg:col-span-5">
+            <RainfallPanel />
+          </div>
+        </section>
 
-               {localForecast?.outlook ? (
-                 <div className="mt-3 text-sm text-[rgb(var(--muted))]">{localForecast.outlook}</div>
-               ) : null}
-
-               {localForecast?.tcInfo ? (
-                 <div className="mt-3 rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--fg)/0.03)] px-4 py-3 text-sm">
-                   {localForecast.tcInfo}
-                 </div>
-               ) : null}
-               {localForecast?.fireDangerWarning ? (
-                 <div className="mt-3 rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--fg)/0.03)] px-4 py-3 text-sm">
-                   {localForecast.fireDangerWarning}
-                 </div>
-               ) : null}
-             </div>
-
-             <div className="lg:col-span-5">
-               <div className="text-sm font-medium">Special weather tips</div>
-               <div className="mt-2 space-y-2">
-                 {dashboardQuery.isLoading ? (
-                   <div className="h-20 animate-pulse rounded-2xl bg-[rgb(var(--fg)/0.06)]" />
-                 ) : swt?.tips?.length ? (
-                   swt.tips.slice(0, 3).map((line: string, index: number) => (
-                     <div
-                       key={`${index}-${line.slice(0, 12)}`}
-                       className="rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--fg)/0.03)] px-4 py-3 text-sm"
-                     >
-                       {line}
-                     </div>
-                   ))
-                 ) : (
-                   <div className="text-sm text-[rgb(var(--muted))]">{t(lang, "label.warnings.none")}</div>
-                 )}
-               </div>
-             </div>
-           </div>
-         </Card>
-
-         <div className="lg:col-span-12">
-           <RainfallPanel />
-         </div>
-       </div>
-     </AppShell>
-   );
- }
+        {dashboardQuery.error ? (
+          <SectionError
+            message="Weather board failed to load"
+            onRetry={retry}
+            retryLabel={retryLabel}
+          />
+        ) : null}
+      </div>
+    </AppShell>
+  );
+}
