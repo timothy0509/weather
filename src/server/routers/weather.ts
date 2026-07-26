@@ -7,9 +7,14 @@ import {
   type HkoForecastResult,
   type HkoLocalForecastResult,
   type HkoNowResult,
+  type HkoRadarResult,
   type HkoSpecialWeatherTipsResult,
+  type HkoSunTimesResult,
+  type HkoTcTrackResult,
+  type HkoTideResult,
   type HkoWarningsResult,
 } from "@/server/hko/service";
+import type { RadarRange } from "@/lib/hko-radar";
 import { publicProcedure, router } from "@/server/trpc";
 
 const languageSchema = z.union([z.literal("en"), z.literal("tc"), z.literal("sc")]);
@@ -159,6 +164,10 @@ export const weatherRouter = router({
         day: z.number().int().optional(),
         hour: z.number().int().optional(),
         lang: languageSchema.optional(),
+        date: z
+          .string()
+          .regex(/^\d{8}$/)
+          .optional(),
       }),
     )
     .query(async ({ input }) => {
@@ -171,6 +180,65 @@ export const weatherRouter = router({
         day: input.day,
         hour: input.hour,
         lang: input.lang as Language | undefined,
+        date: input.date,
       });
     }),
+
+  sunTimes: publicProcedure
+    .input(
+      z.object({
+        lang: languageSchema.default("en"),
+        year: z.number().int(),
+        month: z.number().int().min(1).max(12),
+        day: z.number().int().min(1).max(31),
+      }),
+    )
+    .query(async ({ input }): Promise<HkoSunTimesResult> => {
+      const service = createHkoService(fetchWithTimeout(fetch, 8000));
+      return service.sunTimes(input.lang as Language, input.year, input.month, input.day);
+    }),
+
+  tideHeights: publicProcedure
+    .input(
+      z.object({
+        station: z.string().default("QUB"),
+        year: z.number().int(),
+        month: z.number().int().min(1).max(12),
+        day: z.number().int().min(1).max(31),
+      }),
+    )
+    .query(async ({ input }): Promise<HkoTideResult> => {
+      const service = createHkoService(fetchWithTimeout(fetch, 8000));
+      return service.tideHeights(input.station, input.year, input.month, input.day);
+    }),
+
+  tideTimes: publicProcedure
+    .input(
+      z.object({
+        station: z.string().default("QUB"),
+        year: z.number().int(),
+        month: z.number().int().min(1).max(12),
+        day: z.number().int().min(1).max(31),
+      }),
+    )
+    .query(async ({ input }): Promise<HkoTideResult> => {
+      const service = createHkoService(fetchWithTimeout(fetch, 8000));
+      return service.tideTimes(input.station, input.year, input.month, input.day);
+    }),
+
+  radar: publicProcedure
+    .input(
+      z.object({
+        range: z.enum(["256", "128", "64", "64-2km"]).default("128"),
+      }),
+    )
+    .query(async ({ input }): Promise<HkoRadarResult> => {
+      const service = createHkoService(fetchWithTimeout(fetch, 8000));
+      return service.radar(input.range as RadarRange);
+    }),
+
+  tcTrack: publicProcedure.query(async (): Promise<HkoTcTrackResult> => {
+    const service = createHkoService(fetchWithTimeout(fetch, 8000));
+    return service.tcTrack();
+  }),
 });

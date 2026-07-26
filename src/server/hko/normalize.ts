@@ -79,6 +79,32 @@ export function getLocalForecastText(local: LocalForecast) {
   };
 }
 
+export type SunTimes = {
+  date: string;
+  rise: string;
+  transit: string;
+  set: string;
+};
+
+export function parseSunTimes(fields: string[], rows: unknown[][]): SunTimes | null {
+  if (!rows.length) return null;
+
+  const row = rows[0];
+  const dateIdx = fields.findIndex((f) => f.toUpperCase().includes("YYYY"));
+  const riseIdx = fields.findIndex((f) => f.toUpperCase() === "RISE");
+  const transitIdx = fields.findIndex((f) => f.toUpperCase().includes("TRAN"));
+  const setIdx = fields.findIndex((f) => f.toUpperCase() === "SET");
+
+  if (dateIdx < 0) return null;
+
+  return {
+    date: String(row[dateIdx] ?? ""),
+    rise: riseIdx >= 0 ? String(row[riseIdx] ?? "") : "",
+    transit: transitIdx >= 0 ? String(row[transitIdx] ?? "") : "",
+    set: setIdx >= 0 ? String(row[setIdx] ?? "") : "",
+  };
+}
+
 export function mergeWarnings(summary: WarningSummary, info: WarningInfo) {
   const entries = Object.entries(summary).map(([key, value]) => ({
     key,

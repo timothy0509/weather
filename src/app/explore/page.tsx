@@ -8,15 +8,20 @@ import { Topbar } from "@/components/topbar";
 import { useStationContext } from "@/components/station-provider";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsButton } from "@/components/ui/tabs";
+import { CLIMATE_STATIONS, TIDE_STATIONS } from "@/lib/hko-stations";
 import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
 import { formatHktDateTime, getHktDateParts } from "@/lib/time";
 
 const OPENDATA_PRESETS = [
-  { label: "Sunrise/sunset (SRS)", dataType: "SRS", requiresDate: true },
-  { label: "Moonrise/moonset (MRS)", dataType: "MRS", requiresDate: true },
-  { label: "Visibility (LTMV)", dataType: "LTMV", requiresDate: false },
-  { label: "Lightning count (LHL)", dataType: "LHL", requiresDate: false },
+  { label: "Sunrise/sunset (SRS)", dataType: "SRS", requiresDate: true, requiresStation: false },
+  { label: "Moonrise/moonset (MRS)", dataType: "MRS", requiresDate: true, requiresStation: false },
+  { label: "Visibility (LTMV)", dataType: "LTMV", requiresDate: false, requiresStation: false },
+  { label: "Lightning count (LHL)", dataType: "LHL", requiresDate: false, requiresStation: false },
+  { label: "Daily mean temp (CLMTEMP)", dataType: "CLMTEMP", requiresDate: true, requiresStation: true },
+  { label: "Daily max temp (CLMMAXT)", dataType: "CLMMAXT", requiresDate: true, requiresStation: true },
+  { label: "Daily min temp (CLMMINT)", dataType: "CLMMINT", requiresDate: true, requiresStation: true },
+  { label: "Radiation report (RYES)", dataType: "RYES", requiresDate: true, requiresStation: false, usesDateParam: true },
 ] as const;
 
 type Preset = (typeof OPENDATA_PRESETS)[number];
@@ -55,26 +60,63 @@ export default function ExplorePage() {
   const lunarQuery = api.weather.lunarDate.useQuery({ date: lunarDate });
 
   const [preset, setPreset] = useState<Preset>(OPENDATA_PRESETS[0]);
+  const [climateStation, setClimateStation] = useState<string>("HKO");
+  const [tideStation, setTideStation] = useState<string>("QUB");
+  const [tideMode, setTideMode] = useState<"heights" | "times">("heights");
 
   const openDataParams = useMemo(() => {
-    return {
+    const base = {
       dataType: preset.dataType,
+      lang,
+    };
+
+    if ("usesDateParam" in preset && preset.usesDateParam) {
+      const compact = hktToday.iso.replace(/-/g, "");
+      return { ...base, date: compact };
+    }
+
+    return {
+      ...base,
       year: preset.requiresDate ? hktToday.year : undefined,
       month: preset.requiresDate ? hktToday.month : undefined,
       day: preset.requiresDate ? hktToday.day : undefined,
-      lang,
+      station: preset.requiresStation ? climateStation : undefined,
     };
-  }, [hktToday.day, hktToday.month, hktToday.year, lang, preset.dataType, preset.requiresDate]);
+  }, [climateStation, hktToday.day, hktToday.iso, hktToday.month, hktToday.year, lang, preset]);
 
   const openDataQuery = api.weather.openData.useQuery(openDataParams, {
     staleTime: 5 * 60_000,
   });
+
+  const tideHeightsQuery = api.weather.tideHeights.useQuery(
+    {
+      station: tideStation,
+      year: hktToday.year,
+      month: hktToday.month,
+      day: hktToday.day,
+    },
+    { staleTime: 60 * 60_000, enabled: tideMode === "heights" },
+  );
+
+  const tideTimesQuery = api.weather.tideTimes.useQuery(
+    {
+      station: tideStation,
+      year: hktToday.year,
+      month: hktToday.month,
+      day: hktToday.day,
+    },
+    { staleTime: 60 * 60_000, enabled: tideMode === "times" },
+  );
 
   const openDataRows = useMemo(() => {
     const fields = openDataQuery.data?.fields ?? [];
     const rows = openDataQuery.data?.data ?? [];
     return { fields, rows };
   }, [openDataQuery.data?.data, openDataQuery.data?.fields]);
+
+  const tideData = tideMode === "heights" ? tideHeightsQuery.data : tideTimesQuery.data;
+  const tideLoading = tideMode === "heights" ? tideHeightsQuery.isLoading : tideTimesQuery.isLoading;
+  const tideError = tideMode === "heights" ? tideHeightsQuery.error : tideTimesQuery.error;
 
   useEffect(() => {
     const onRefresh = () => {
@@ -83,10 +125,12 @@ export default function ExplorePage() {
       void earthquakeQuery.refetch();
       void lunarQuery.refetch();
       void openDataQuery.refetch();
+      void tideHeightsQuery.refetch();
+      void tideTimesQuery.refetch();
     };
     window.addEventListener("tw:refresh", onRefresh);
     return () => window.removeEventListener("tw:refresh", onRefresh);
-  }, [earthquakeQuery, localQuery, lunarQuery, openDataQuery, tipsQuery]);
+  }, [earthquakeQuery, localQuery, lunarQuery, openDataQuery, tideHeightsQuery, tideTimesQuery, tipsQuery]);
 
   return (
     <AppShell header={<Topbar />}>
@@ -94,7 +138,7 @@ export default function ExplorePage() {
         <div>
           <h1 className="font-display text-3xl font-bold tracking-tight">Explore</h1>
           <p className="mt-1 max-w-2xl text-sm leading-relaxed text-[rgb(var(--muted))]">
-            Extra Observatory datasets — local brief, tips, tremors, lunar calendar, and open tables.
+            Extra Observatory datasets — local brief, tips, tremors, lunar calendar, tides, and open tables.
           </p>
         </div>
 
@@ -220,6 +264,67 @@ export default function ExplorePage() {
             )}
           </Panel>
 
+          <Panel className="lg:col-span-12" title={t(lang, "label.tides")} meta={hktToday.iso}>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <Tabs>
+                <TabsButton
+                  active={tideMode === "heights"}
+                  onClick={() => setTideMode("heights")}
+                >
+                  {t(lang, "label.tide_heights")}
+                </TabsButton>
+                <TabsButton active={tideMode === "times"} onClick={() => setTideMode("times")}>
+                  {t(lang, "label.tide_times")}
+                </TabsButton>
+              </Tabs>
+
+              <select
+                value={tideStation}
+                onChange={(event) => setTideStation(event.target.value)}
+                className="border border-[rgb(var(--rule))] bg-[rgb(var(--bg))] px-3 py-1.5 font-data text-xs uppercase tracking-[0.08em]"
+              >
+                {TIDE_STATIONS.map((entry) => (
+                  <option key={entry.code} value={entry.code}>
+                    {entry.label} ({entry.code})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {tideLoading ? (
+              <div className="mt-4 h-32 animate-pulse bg-[rgb(var(--fg)/0.06)]" />
+            ) : tideError ? (
+              <p className="mt-4 text-sm text-[rgb(var(--signal-red))]">Tide data unavailable</p>
+            ) : (
+              <div className="mt-4 overflow-auto border border-[rgb(var(--rule))]">
+                <table className="w-full min-w-[480px] text-left text-sm">
+                  <thead className="bg-[rgb(var(--bg))] font-data text-[0.65rem] uppercase tracking-[0.1em] text-[rgb(var(--muted))]">
+                    <tr>
+                      {(tideData?.fields ?? []).map((field) => (
+                        <th key={field} className="px-3 py-2 font-medium">
+                          {field}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(tideData?.data ?? []).map((row, index) => (
+                      <tr key={index} className="border-t border-[rgb(var(--rule))]">
+                        {row.map((cell, cellIndex) => (
+                          <td key={cellIndex} className="px-3 py-2 font-data text-xs">
+                            {typeof cell === "string" || typeof cell === "number"
+                              ? String(cell)
+                              : JSON.stringify(cell)}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Panel>
+
           <Panel className="lg:col-span-12" title="Open data table">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <Tabs>
@@ -236,11 +341,21 @@ export default function ExplorePage() {
 
               <div className="flex flex-wrap items-center gap-2 font-data text-[0.65rem] uppercase tracking-[0.1em] text-[rgb(var(--muted))]">
                 <span>{preset.label}</span>
-                {preset.requiresDate ? (
-                  <span>
-                    {openDataParams.year}-{String(openDataParams.month).padStart(2, "0")}-
-                    {String(openDataParams.day).padStart(2, "0")}
-                  </span>
+                {preset.requiresDate && !("usesDateParam" in preset && preset.usesDateParam) ? (
+                  <span>{hktToday.iso}</span>
+                ) : null}
+                {preset.requiresStation ? (
+                  <select
+                    value={climateStation}
+                    onChange={(event) => setClimateStation(event.target.value)}
+                    className="border border-[rgb(var(--rule))] bg-[rgb(var(--bg))] px-2 py-1 font-data text-[0.65rem] uppercase tracking-[0.08em] text-[rgb(var(--fg))]"
+                  >
+                    {CLIMATE_STATIONS.map((entry) => (
+                      <option key={entry.code} value={entry.code}>
+                        {entry.label}
+                      </option>
+                    ))}
+                  </select>
                 ) : null}
                 <Button
                   type="button"

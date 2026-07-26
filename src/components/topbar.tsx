@@ -31,10 +31,13 @@ export function Topbar() {
 
         <nav className="mb-0.5 flex items-center gap-1 border-l border-[rgb(var(--rule))] pl-4">
           <NavLink href="/" active={pathname === "/"}>
-            Board
+            {t(lang, "nav.board")}
           </NavLink>
           <NavLink href="/explore" active={pathname?.startsWith("/explore") ?? false}>
-            Explore
+            {t(lang, "nav.explore")}
+          </NavLink>
+          <NavLink href="/radar" active={pathname?.startsWith("/radar") ?? false}>
+            {t(lang, "nav.radar")}
           </NavLink>
         </nav>
       </div>

@@ -407,6 +407,7 @@ export async function fetchOpenDataTable(
     day?: number;
     hour?: number;
     lang?: Language;
+    date?: string;
   },
 ) {
   const params = new URLSearchParams();
@@ -420,6 +421,7 @@ export async function fetchOpenDataTable(
   if (typeof input.day === "number") params.set("day", String(input.day));
   if (typeof input.hour === "number") params.set("hour", String(input.hour));
   if (input.lang) params.set("lang", input.lang);
+  if (input.date) params.set("date", input.date);
 
   const url = `${OPENDATA_ENDPOINT}?${params.toString()}`;
 

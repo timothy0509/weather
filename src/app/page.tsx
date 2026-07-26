@@ -11,7 +11,7 @@ import { Topbar } from "@/components/topbar";
 import { Button } from "@/components/ui/button";
 import { getHkoWeatherVisual } from "@/lib/hko-icons";
 import { t } from "@/lib/i18n";
-import { formatHktDateTime } from "@/lib/time";
+import { formatHktDateTime, getHktDateParts } from "@/lib/time";
 import { getTempTone, toneColor } from "@/lib/weather-visual";
 
 function SectionError({
@@ -35,11 +35,19 @@ function SectionError({
 
 export default function Home() {
   const { lang, station } = useStationContext();
+  const hktToday = useMemo(() => getHktDateParts(), []);
 
   const dashboardQuery = api.weather.dashboard.useQuery(
     { lang, station },
     { staleTime: 30_000, refetchInterval: 60_000 },
   );
+
+  const sunTimesQuery = api.weather.sunTimes.useQuery({
+    lang,
+    year: hktToday.year,
+    month: hktToday.month,
+    day: hktToday.day,
+  });
 
   const now = dashboardQuery.data?.now;
   const forecast = dashboardQuery.data?.forecast9d;
@@ -48,19 +56,54 @@ export default function Home() {
   const swt = dashboardQuery.data?.swt;
   const errors = dashboardQuery.data?.errors;
 
+  const hasTcWarning = useMemo(
+    () => warnings.some((w) => w.key === "WTCSGNL" || w.code?.startsWith("TC")),
+    [warnings],
+  );
+
+  const tcTrackQuery = api.weather.tcTrack.useQuery(undefined, {
+    enabled: hasTcWarning,
+    staleTime: 5 * 60_000,
+  });
+
   const previewDays = useMemo(() => (forecast?.days ?? []).slice(0, 9), [forecast?.days]);
 
   const tempC = now?.temperature?.value ?? null;
   const tempTone = useMemo(() => getTempTone(tempC), [tempC]);
 
+  const hasLightning = useMemo(() => {
+    if (!now?.lightning?.data?.length) return false;
+    return now.lightning.data.some((entry) => entry.occur);
+  }, [now?.lightning?.data]);
+
+  const nowStats = useMemo(() => {
+    if (!now) return [];
+    const items: { label: string; value: string }[] = [];
+    if (now.mintempFrom00To09) {
+      items.push({ label: t(lang, "label.mintemp_00_09"), value: now.mintempFrom00To09 });
+    }
+    if (now.rainfallFrom00To12) {
+      items.push({ label: t(lang, "label.rainfall_00_12"), value: now.rainfallFrom00To12 });
+    }
+    if (now.rainfallLastMonth) {
+      items.push({ label: t(lang, "label.rainfall_last_month"), value: now.rainfallLastMonth });
+    }
+    if (now.rainfallJanuaryToLastMonth) {
+      items.push({ label: t(lang, "label.rainfall_ytd"), value: now.rainfallJanuaryToLastMonth });
+    }
+    return items;
+  }, [lang, now]);
+
   useEffect(() => {
     const onRefresh = () => {
       void dashboardQuery.refetch();
+      void sunTimesQuery.refetch();
+      if (hasTcWarning) void tcTrackQuery.refetch();
     };
 
     window.addEventListener("tw:refresh", onRefresh);
     return () => window.removeEventListener("tw:refresh", onRefresh);
-  }, [dashboardQuery]);
+  }, [dashboardQuery, hasTcWarning, sunTimesQuery, tcTrackQuery]);
 
   const nowVisual = useMemo(() => {
     return getHkoWeatherVisual(now?.iconCode ?? null);
@@ -88,6 +131,50 @@ export default function Home() {
             onRetry={retry}
             retryLabel={retryLabel}
           />
+        ) : null}
+
+        {hasTcWarning && tcTrackQuery.data?.cyclones.length ? (
+          <section className="border border-[rgb(var(--signal-red)/0.35)] bg-[rgb(var(--signal-red)/0.06)] p-4">
+            <div className="section-label">{t(lang, "label.typhoon")}</div>
+            <div className="mt-3 space-y-4">
+              {tcTrackQuery.data.cyclones.map((cyclone) => {
+                const latest = cyclone.latestPast ?? cyclone.latestForecast;
+                return (
+                  <div key={cyclone.id} className="text-sm">
+                    <div className="font-display text-xl font-bold">
+                      {cyclone.englishName}
+                      {cyclone.chineseName ? (
+                        <span className="ml-2 font-normal text-[rgb(var(--muted))]">
+                          {cyclone.chineseName}
+                        </span>
+                      ) : null}
+                    </div>
+                    {latest ? (
+                      <div className="mt-2 space-y-1 text-[rgb(var(--muted))]">
+                        <div>{latest.intensity}</div>
+                        <div>
+                          {latest.maximumWind} · {latest.latitude} {latest.longitude}
+                        </div>
+                        {latest.time ? (
+                          <div className="font-data text-xs">
+                            {formatHktDateTime(latest.time)}
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
+                    <a
+                      href="https://www.hko.gov.hk/en/wxinfo/currwx/tc_gis.htm"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-2 inline-block font-data text-xs uppercase tracking-[0.1em] text-[rgb(var(--signal-teal))] hover:underline"
+                    >
+                      {t(lang, "label.typhoon.view_map")}
+                    </a>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
         ) : null}
 
         <section className="border-b border-[rgb(var(--rule))] pb-8">
@@ -149,6 +236,57 @@ export default function Home() {
               </div>
             </div>
           )}
+
+          {!errors?.now && (hasLightning || nowStats.length > 0 || now?.tcMessage?.length) ? (
+            <div className="mt-4 space-y-2">
+              {hasLightning ? (
+                <div className="border-l-4 border-[rgb(var(--signal-amber))] bg-[rgb(var(--signal-amber)/0.1)] px-4 py-2 text-sm">
+                  {t(lang, "label.lightning.active")}
+                </div>
+              ) : null}
+              {now?.tcMessage?.map((line, index) => (
+                <div
+                  key={`tc-${index}`}
+                  className="border-l-4 border-[rgb(var(--signal-red))] bg-[rgb(var(--signal-red)/0.06)] px-4 py-2 text-sm leading-relaxed"
+                >
+                  {line}
+                </div>
+              ))}
+              {nowStats.length > 0 ? (
+                <div className="flex flex-wrap gap-x-6 gap-y-1 font-data text-xs text-[rgb(var(--muted))]">
+                  {nowStats.map((stat) => (
+                    <div key={stat.label}>
+                      <span className="uppercase tracking-[0.1em]">{stat.label}</span>{" "}
+                      <span className="text-[rgb(var(--fg))]">{stat.value}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {sunTimesQuery.data ? (
+            <div className="mt-4 flex flex-wrap gap-x-6 gap-y-1 font-data text-xs text-[rgb(var(--muted))]">
+              {sunTimesQuery.data.rise ? (
+                <div>
+                  <span className="uppercase tracking-[0.1em]">{t(lang, "label.sunrise")}</span>{" "}
+                  <span className="text-[rgb(var(--fg))]">{sunTimesQuery.data.rise}</span>
+                </div>
+              ) : null}
+              {sunTimesQuery.data.transit ? (
+                <div>
+                  <span className="uppercase tracking-[0.1em]">{t(lang, "label.sun_transit")}</span>{" "}
+                  <span className="text-[rgb(var(--fg))]">{sunTimesQuery.data.transit}</span>
+                </div>
+              ) : null}
+              {sunTimesQuery.data.set ? (
+                <div>
+                  <span className="uppercase tracking-[0.1em]">{t(lang, "label.sunset")}</span>{" "}
+                  <span className="text-[rgb(var(--fg))]">{sunTimesQuery.data.set}</span>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
         </section>
 
         <section>
@@ -184,7 +322,7 @@ export default function Home() {
                       return (
                         <div
                           key={day.forecastDate}
-                          className="w-28 shrink-0 border-r border-[rgb(var(--rule))] px-3 py-3 last:border-r-0"
+                          className="w-32 shrink-0 border-r border-[rgb(var(--rule))] px-3 py-3 last:border-r-0"
                         >
                           <div className="font-data text-[0.65rem] uppercase tracking-[0.1em] text-[rgb(var(--muted))]">
                             {day.week.slice(0, 3)}
@@ -201,6 +339,22 @@ export default function Home() {
                           <div className="font-data text-xs text-[rgb(var(--muted))]">
                             {t(lang, "label.low")} {day.forecastMintemp.value}°
                           </div>
+                          {day.forecastMinrh && day.forecastMaxrh ? (
+                            <div className="mt-1 font-data text-[0.65rem] text-[rgb(var(--muted))]">
+                              {day.forecastMinrh.value}–{day.forecastMaxrh.value}
+                              {day.forecastMaxrh.unit}
+                            </div>
+                          ) : null}
+                          {day.PSR ? (
+                            <div className="mt-1 font-data text-[0.65rem] uppercase tracking-[0.08em] text-[rgb(var(--signal-teal))]">
+                              {t(lang, "label.rain_probability")}: {day.PSR}
+                            </div>
+                          ) : null}
+                          {day.forecastWind ? (
+                            <div className="mt-1 line-clamp-2 text-[0.65rem] leading-snug text-[rgb(var(--muted))]">
+                              {day.forecastWind}
+                            </div>
+                          ) : null}
                           <div className="mt-2 line-clamp-2 text-[0.7rem] leading-snug text-[rgb(var(--muted))]">
                             {day.forecastWeather}
                           </div>
@@ -210,6 +364,36 @@ export default function Home() {
               </div>
             </div>
           )}
+
+          {!errors?.forecast9d && (forecast?.seaTemp || (forecast?.soilTemp?.length ?? 0) > 0) ? (
+            <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 font-data text-xs text-[rgb(var(--muted))]">
+              {forecast?.seaTemp?.value != null ? (
+                <div>
+                  <span className="uppercase tracking-[0.1em]">{t(lang, "label.sea_temp")}</span>{" "}
+                  <span className="text-[rgb(var(--fg))]">
+                    {forecast.seaTemp.value}
+                    {forecast.seaTemp.unit ?? "°C"}
+                    {forecast.seaTemp.place ? ` · ${forecast.seaTemp.place}` : ""}
+                  </span>
+                </div>
+              ) : null}
+              {forecast?.soilTemp?.map((entry, index) =>
+                entry.value != null ? (
+                  <div key={`soil-${index}`}>
+                    <span className="uppercase tracking-[0.1em]">{t(lang, "label.soil_temp")}</span>{" "}
+                    <span className="text-[rgb(var(--fg))]">
+                      {entry.value}
+                      {entry.unit ?? "°C"}
+                      {entry.place ? ` · ${entry.place}` : ""}
+                      {entry.depth?.value != null
+                        ? ` (${entry.depth.value}${entry.depth.unit ?? "cm"})`
+                        : ""}
+                    </span>
+                  </div>
+                ) : null,
+              )}
+            </div>
+          ) : null}
         </section>
 
         <section className="grid gap-8 lg:grid-cols-12">
