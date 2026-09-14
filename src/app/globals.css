@@ -33,6 +33,19 @@
   --shadow: 26 31 36;
   --radius: 2px;
   --rule: 26 31 36 / 0.18;
+
+  /* Phase 0 surfaces */
+  --paper-warm: 245 242 234;
+  --wash: 236 232 222;
+  --overlay: 26 31 36 / 0.5;
+  --header-bg: 250 248 242 / 0.9;
+
+  /* Signal foregrounds — light theme (>=4.5:1 on signal bg) */
+  --sig-amber-fg: 26 31 36;
+  --sig-red-fg: 250 248 242;
+  --sig-teal-fg: 250 248 242;
+  --sig-black-fg: 250 248 242;
+  --sig-ink-fg: 250 248 242;
 }
 
 .dark {
@@ -62,6 +75,19 @@
 
   --shadow: 0 0 0;
   --rule: 236 232 222 / 0.16;
+
+  /* Phase 0 surfaces — dark */
+  --paper-warm: 30 35 40;
+  --wash: 22 27 32;
+  --overlay: 0 0 0 / 0.6;
+  --header-bg: 28 33 38 / 0.9;
+
+  /* Signal foregrounds — dark theme (>=4.5:1 on signal bg) */
+  --sig-amber-fg: 26 31 36;
+  --sig-red-fg: 18 22 26;
+  --sig-teal-fg: 18 22 26;
+  --sig-black-fg: 18 22 26;
+  --sig-ink-fg: 18 22 26;
 }
 
 @theme inline {
@@ -109,10 +135,79 @@ body {
 
 .section-label {
   font-family: var(--font-data), "IBM Plex Mono", ui-monospace, monospace;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: rgb(var(--muted));
+}
+.sub-label {
+  font-family: var(--font-data), "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgb(var(--muted));
+}
+
+/* Phase 0 type scale */
+.label {
+  font-family: var(--font-data), "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  line-height: 1.4;
+}
+
+.label-sm {
+  font-family: var(--font-data), "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  line-height: 1.4;
+}
+
+.meta {
+  font-family: var(--font-data), "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  line-height: 1.5;
+  color: rgb(var(--muted));
+}
+
+/* Shared focus ring — 2px signal-teal, 2px offset */
+:focus-visible {
+  outline: 2px solid rgb(var(--signal-teal));
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+
+/* Theme-aware signal badges (>=4.5:1 fg on signal bg) */
+.sig-amber {
+  background-color: rgb(var(--signal-amber));
+  color: rgb(var(--sig-amber-fg));
+}
+
+.sig-red {
+  background-color: rgb(var(--signal-red));
+  color: rgb(var(--sig-red-fg));
+}
+
+.sig-teal {
+  background-color: rgb(var(--signal-teal));
+  color: rgb(var(--sig-teal-fg));
+}
+
+.sig-black {
+  background-color: rgb(var(--signal-black));
+  color: rgb(var(--sig-black-fg));
+}
+
+.sig-ink {
+  background-color: rgb(var(--fg));
+  color: rgb(var(--sig-ink-fg));
 }
 
 @keyframes strip-in {
@@ -146,8 +241,23 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+
   .anim-strip,
-  .anim-temp {
-    animation: none;
+  .anim-temp,
+  .animate-pulse,
+  .animate-spin,
+  .animate-ping,
+  .animate-bounce {
+    animation: none !important;
   }
 }

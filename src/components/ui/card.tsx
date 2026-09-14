@@ -6,7 +6,7 @@ export function Card({ className, ...props }: ComponentPropsWithoutRef<"div">) {
   return (
     <div
       className={cn(
-        "rounded-[var(--radius)] border border-[rgb(var(--border))]",
+        "rounded-[var(--radius)] border border-[rgb(var(--rule))]",
         "bg-[rgb(var(--card))] text-[rgb(var(--card-fg))]",
         className,
       )}

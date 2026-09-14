@@ -4,12 +4,14 @@ import { useEffect, useMemo, useState } from "react";
 
 import { api } from "@/app/providers";
 import { AppShell } from "@/components/app-shell";
+import { DataTable } from "@/components/data-table";
+import { Panel } from "@/components/panel";
 import { Topbar } from "@/components/topbar";
 import { useStationContext } from "@/components/station-provider";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { Tabs, TabsButton } from "@/components/ui/tabs";
 import { CLIMATE_STATIONS, TIDE_STATIONS } from "@/lib/hko-stations";
-import { cn } from "@/lib/cn";
 import { t } from "@/lib/i18n";
 import { formatHktDateTime, getHktDateParts, getHktYesterdayIso, toCompactDate } from "@/lib/time";
 
@@ -25,28 +27,6 @@ const OPENDATA_PRESETS = [
 ] as const;
 
 type Preset = (typeof OPENDATA_PRESETS)[number];
-
-function Panel({
-  title,
-  meta,
-  children,
-  className,
-}: {
-  title: string;
-  meta?: string;
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <section className={cn("border border-[rgb(var(--rule))] bg-[rgb(var(--card))] p-5", className)}>
-      <div className="flex items-end justify-between gap-3">
-        <div className="section-label">{title}</div>
-        {meta ? <div className="font-data text-[0.65rem] text-[rgb(var(--muted))]">{meta}</div> : null}
-      </div>
-      <div className="mt-4">{children}</div>
-    </section>
-  );
-}
 
 export default function ExplorePage() {
   const { lang } = useStationContext();
@@ -149,16 +129,18 @@ export default function ExplorePage() {
     <AppShell header={<Topbar />}>
       <div className="space-y-6">
         <div>
-          <h1 className="font-display text-3xl font-bold tracking-tight">Explore</h1>
+          <h1 className="font-display text-3xl font-bold tracking-tight">
+            {t(lang, "label.explore.title")}
+          </h1>
           <p className="mt-1 max-w-2xl text-sm leading-relaxed text-[rgb(var(--muted))]">
-            Extra Observatory datasets — local brief, tips, tremors, lunar calendar, tides, and open tables.
+            {t(lang, "label.explore.lede")}
           </p>
         </div>
 
         <div className="grid gap-4 lg:grid-cols-12">
           <Panel
             className="lg:col-span-6"
-            title="Local forecast"
+            title={t(lang, "label.local_forecast")}
             meta={
               localQuery.data?.updateTime
                 ? formatHktDateTime(localQuery.data.updateTime)
@@ -166,9 +148,9 @@ export default function ExplorePage() {
             }
           >
             {localQuery.isLoading ? (
-              <div className="h-24 animate-pulse bg-[rgb(var(--fg)/0.06)]" />
+              <div className="h-24 animate-pulse rounded-[var(--radius)] bg-[rgb(var(--fg)/0.06)]" />
             ) : localQuery.error ? (
-              <p className="text-sm text-[rgb(var(--signal-red))]">Local forecast unavailable</p>
+              <p className="text-sm text-[rgb(var(--signal-red))]">{t(lang, "error.local_forecast")}</p>
             ) : (
               <div className="space-y-3 text-sm leading-relaxed">
                 {localQuery.data?.forecastPeriod ? (
@@ -176,6 +158,7 @@ export default function ExplorePage() {
                     {localQuery.data.forecastPeriod}
                   </div>
                 ) : null}
+                {localQuery.data?.generalSituation ? <p>{localQuery.data.generalSituation}</p> : null}
                 {localQuery.data?.forecastDesc ? <p>{localQuery.data.forecastDesc}</p> : null}
                 {localQuery.data?.outlook ? (
                   <p className="text-[rgb(var(--muted))]">{localQuery.data.outlook}</p>
@@ -196,13 +179,13 @@ export default function ExplorePage() {
 
           <Panel
             className="lg:col-span-6"
-            title="Special weather tips"
-            meta={`${tipsQuery.data?.tips.length ?? 0} items`}
+            title={t(lang, "label.special_tips")}
+            meta={`${tipsQuery.data?.tips.length ?? 0} ${t(lang, "label.items")}`}
           >
             {tipsQuery.isLoading ? (
-              <div className="h-24 animate-pulse bg-[rgb(var(--fg)/0.06)]" />
+              <div className="h-24 animate-pulse rounded-[var(--radius)] bg-[rgb(var(--fg)/0.06)]" />
             ) : tipsQuery.error ? (
-              <p className="text-sm text-[rgb(var(--signal-red))]">Tips unavailable</p>
+              <p className="text-sm text-[rgb(var(--signal-red))]">{t(lang, "error.tips.unavailable")}</p>
             ) : tipsQuery.data?.tips.length ? (
               <div className="space-y-3">
                 {tipsQuery.data.tips.map((line, index) => (
@@ -215,13 +198,13 @@ export default function ExplorePage() {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-[rgb(var(--muted))]">None</p>
+              <p className="text-sm text-[rgb(var(--muted))]">{t(lang, "label.special_tips.none")}</p>
             )}
           </Panel>
 
           <Panel
             className="lg:col-span-6"
-            title="Earthquake"
+            title={t(lang, "label.earthquake")}
             meta={
               earthquakeQuery.data?.quick.updateTime
                 ? formatHktDateTime(earthquakeQuery.data.quick.updateTime)
@@ -229,13 +212,13 @@ export default function ExplorePage() {
             }
           >
             {earthquakeQuery.isLoading ? (
-              <div className="h-24 animate-pulse bg-[rgb(var(--fg)/0.06)]" />
+              <div className="h-24 animate-pulse rounded-[var(--radius)] bg-[rgb(var(--fg)/0.06)]" />
             ) : earthquakeQuery.error ? (
-              <p className="text-sm text-[rgb(var(--signal-red))]">Earthquake data unavailable</p>
+              <p className="text-sm text-[rgb(var(--signal-red))]">{t(lang, "error.earthquake")}</p>
             ) : (
               <div className="space-y-4 text-sm">
                 <div>
-                  <div className="section-label">Quick message</div>
+                  <div className="sub-label">{t(lang, "label.earthquake.quick")}</div>
                   <div className="mt-2 font-display text-2xl font-bold">
                     M {earthquakeQuery.data?.quick.mag ?? "—"}
                   </div>
@@ -246,7 +229,7 @@ export default function ExplorePage() {
 
                 {earthquakeQuery.data?.felt?.updateTime ? (
                   <div>
-                    <div className="section-label">Locally felt</div>
+                    <div className="sub-label">{t(lang, "label.earthquake.felt")}</div>
                     <div className="mt-2 font-display text-xl font-bold">
                       M {earthquakeQuery.data.felt.mag ?? "—"}
                     </div>
@@ -264,11 +247,15 @@ export default function ExplorePage() {
             )}
           </Panel>
 
-          <Panel className="lg:col-span-6" title="Lunar date" meta={lunarDate}>
+          <Panel
+            className="lg:col-span-6"
+            title={t(lang, "label.lunar_date")}
+            meta={lunarDate}
+          >
             {lunarQuery.isLoading ? (
-              <div className="h-24 animate-pulse bg-[rgb(var(--fg)/0.06)]" />
+              <div className="h-24 animate-pulse rounded-[var(--radius)] bg-[rgb(var(--fg)/0.06)]" />
             ) : lunarQuery.error ? (
-              <p className="text-sm text-[rgb(var(--signal-red))]">Lunar date unavailable</p>
+              <p className="text-sm text-[rgb(var(--signal-red))]">{t(lang, "error.lunar")}</p>
             ) : (
               <div>
                 <div className="font-display text-2xl font-bold">{lunarQuery.data?.LunarYear}</div>
@@ -291,54 +278,35 @@ export default function ExplorePage() {
                 </TabsButton>
               </Tabs>
 
-              <select
+              <Select
                 value={tideStation}
                 onChange={(event) => setTideStation(event.target.value)}
-                className="border border-[rgb(var(--rule))] bg-[rgb(var(--bg))] px-3 py-1.5 font-data text-xs uppercase tracking-[0.08em]"
+                aria-label={t(lang, "label.station")}
               >
                 {TIDE_STATIONS.map((entry) => (
                   <option key={entry.code} value={entry.code}>
                     {entry.label} ({entry.code})
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
 
             {tideLoading ? (
-              <div className="mt-4 h-32 animate-pulse bg-[rgb(var(--fg)/0.06)]" />
+              <div className="mt-4 h-32 animate-pulse rounded-[var(--radius)] bg-[rgb(var(--fg)/0.06)]" />
             ) : tideError ? (
-              <p className="mt-4 text-sm text-[rgb(var(--signal-red))]">Tide data unavailable</p>
+              <p className="mt-4 text-sm text-[rgb(var(--signal-red))]">{t(lang, "error.tide")}</p>
             ) : (
-              <div className="mt-4 overflow-auto border border-[rgb(var(--rule))]">
-                <table className="w-full min-w-[480px] text-left text-sm">
-                  <thead className="bg-[rgb(var(--bg))] font-data text-[0.65rem] uppercase tracking-[0.1em] text-[rgb(var(--muted))]">
-                    <tr>
-                      {(tideData?.fields ?? []).map((field) => (
-                        <th key={field} className="px-3 py-2 font-medium">
-                          {field}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(tideData?.data ?? []).map((row, index) => (
-                      <tr key={index} className="border-t border-[rgb(var(--rule))]">
-                        {row.map((cell, cellIndex) => (
-                          <td key={cellIndex} className="px-3 py-2 font-data text-xs">
-                            {typeof cell === "string" || typeof cell === "number"
-                              ? String(cell)
-                              : JSON.stringify(cell)}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="mt-4">
+                <DataTable
+                  fields={tideData?.fields ?? []}
+                  rows={(tideData?.data ?? []) as unknown[][]}
+                  emptyLabel={t(lang, "label.table.empty")}
+                />
               </div>
             )}
           </Panel>
 
-          <Panel className="lg:col-span-12" title="Open data table">
+          <Panel className="lg:col-span-12" title={t(lang, "label.open_data")}>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <Tabs>
                 {OPENDATA_PRESETS.map((entry) => (
@@ -352,7 +320,7 @@ export default function ExplorePage() {
                 ))}
               </Tabs>
 
-              <div className="flex flex-wrap items-center gap-2 font-data text-[0.65rem] uppercase tracking-[0.1em] text-[rgb(var(--muted))]">
+              <div className="flex flex-wrap items-center gap-2 font-data text-xs uppercase tracking-[0.1em] text-[rgb(var(--muted))]">
                 <span>{preset.label}</span>
                 {preset.dateMode === "day" ? <span>{hktToday.iso}</span> : null}
                 {preset.dateMode === "month" ? (
@@ -362,17 +330,18 @@ export default function ExplorePage() {
                 ) : null}
                 {preset.dateMode === "yesterday" ? <span>{hktYesterday}</span> : null}
                 {preset.requiresStation ? (
-                  <select
+                  <Select
                     value={climateStation}
                     onChange={(event) => setClimateStation(event.target.value)}
-                    className="border border-[rgb(var(--rule))] bg-[rgb(var(--bg))] px-2 py-1 font-data text-[0.65rem] uppercase tracking-[0.08em] text-[rgb(var(--fg))]"
+                    aria-label={t(lang, "label.station")}
+                    className="h-9 px-2 text-xs"
                   >
                     {CLIMATE_STATIONS.map((entry) => (
                       <option key={entry.code} value={entry.code}>
                         {entry.label}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 ) : null}
                 <Button
                   type="button"
@@ -386,35 +355,16 @@ export default function ExplorePage() {
             </div>
 
             {openDataQuery.isLoading ? (
-              <div className="mt-4 h-44 animate-pulse bg-[rgb(var(--fg)/0.06)]" />
+              <div className="mt-4 h-44 animate-pulse rounded-[var(--radius)] bg-[rgb(var(--fg)/0.06)]" />
             ) : openDataQuery.error ? (
-              <p className="mt-4 text-sm text-[rgb(var(--signal-red))]">Open data unavailable</p>
+              <p className="mt-4 text-sm text-[rgb(var(--signal-red))]">{t(lang, "error.open_data")}</p>
             ) : (
-              <div className="mt-4 overflow-auto border border-[rgb(var(--rule))]">
-                <table className="w-full min-w-[720px] text-left text-sm">
-                  <thead className="bg-[rgb(var(--bg))] font-data text-[0.65rem] uppercase tracking-[0.1em] text-[rgb(var(--muted))]">
-                    <tr>
-                      {openDataRows.fields.map((field) => (
-                        <th key={field} className="px-3 py-2 font-medium">
-                          {field}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {openDataRows.rows.slice(0, 64).map((row, index) => (
-                      <tr key={index} className="border-t border-[rgb(var(--rule))]">
-                        {row.map((cell, cellIndex) => (
-                          <td key={cellIndex} className="px-3 py-2 font-data text-xs">
-                            {typeof cell === "string" || typeof cell === "number"
-                              ? String(cell)
-                              : JSON.stringify(cell)}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="mt-4">
+                <DataTable
+                  fields={openDataRows.fields}
+                  rows={openDataRows.rows.slice(0, 64) as unknown[][]}
+                  emptyLabel={t(lang, "label.table.empty")}
+                />
               </div>
             )}
           </Panel>

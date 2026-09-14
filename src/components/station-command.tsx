@@ -69,7 +69,7 @@ export function StationCommand({
           </Dialog.Description>
           <Card className="overflow-hidden p-0">
             <Command className="flex flex-col">
-              <div className="flex items-center gap-3 border-b border-[rgb(var(--border))] px-4 py-3">
+              <div className="flex items-center gap-3 border-b border-[rgb(var(--rule))] px-4 py-3">
                 <SearchIcon className="h-4 w-4 text-[rgb(var(--muted))]" />
                 <Command.Input
                   placeholder={t(lang, "label.search_stations")}
@@ -97,7 +97,7 @@ export function StationCommand({
                           value={station}
                           onSelect={selectStation}
                           className={cn(
-                            "flex cursor-default select-none items-center justify-between gap-3 rounded-xl px-3 py-2 text-sm",
+                            "flex cursor-default select-none items-center justify-between gap-3 rounded-[var(--radius)] px-3 py-2 text-sm",
                             "data-[selected='true']:bg-[rgb(var(--fg)/0.06)]",
                           )}
                         >
