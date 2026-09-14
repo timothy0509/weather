@@ -2,36 +2,19 @@
 
 import { useEffect, useMemo } from "react";
 
+import Link from "next/link";
+
 import { api } from "@/app/providers";
 import { AppShell } from "@/components/app-shell";
+import { Alert } from "@/components/alert";
 import { RainfallPanel } from "@/components/rainfall-panel";
 import { SignalStrip } from "@/components/signal-strip";
 import { useStationContext } from "@/components/station-provider";
 import { Topbar } from "@/components/topbar";
-import { Button } from "@/components/ui/button";
 import { getHkoWeatherVisual } from "@/lib/hko-icons";
 import { t } from "@/lib/i18n";
 import { formatHktDateTime, getHktDateParts } from "@/lib/time";
 import { getTempTone, toneColor } from "@/lib/weather-visual";
-
-function SectionError({
-  message,
-  onRetry,
-  retryLabel,
-}: {
-  message: string;
-  onRetry: () => void;
-  retryLabel: string;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-3 border border-[rgb(var(--signal-red)/0.35)] bg-[rgb(var(--signal-red)/0.08)] px-3 py-2 text-sm">
-      <span>{message}</span>
-      <Button type="button" variant="ghost" size="sm" onClick={onRetry}>
-        {retryLabel}
-      </Button>
-    </div>
-  );
-}
 
 export default function Home() {
   const { lang, station } = useStationContext();
@@ -94,6 +77,16 @@ export default function Home() {
     return items;
   }, [lang, now]);
 
+  const sunLedger = useMemo(() => {
+    const sun = sunTimesQuery.data;
+    if (!sun) return [];
+    const items: { label: string; value: string }[] = [];
+    if (sun.rise) items.push({ label: t(lang, "label.sunrise"), value: sun.rise });
+    if (sun.transit) items.push({ label: t(lang, "label.sun_transit"), value: sun.transit });
+    if (sun.set) items.push({ label: t(lang, "label.sunset"), value: sun.set });
+    return items;
+  }, [lang, sunTimesQuery.data]);
+
   useEffect(() => {
     const onRefresh = () => {
       void dashboardQuery.refetch();
@@ -114,28 +107,33 @@ export default function Home() {
 
   return (
     <AppShell header={<Topbar />}>
+      <h1 className="sr-only">{t(lang, "label.board")}</h1>
       <div className="space-y-8">
         {errors?.warnings ? (
-          <SectionError
-            message="HKO warnings unavailable"
+          <Alert
+            variant="warning"
+            message={t(lang, "error.warnings")}
             onRetry={retry}
             retryLabel={retryLabel}
           />
-        ) : (
-          <SignalStrip warnings={warnings} tips={errors?.swt ? undefined : swt?.tips} />
-        )}
+        ) : null}
+        <SignalStrip
+          warnings={errors?.warnings ? [] : warnings}
+          tips={errors?.swt ? undefined : swt?.tips}
+        />
 
         {errors?.swt ? (
-          <SectionError
-            message="HKO tips unavailable"
+          <Alert
+            variant="advisory"
+            message={t(lang, "error.tips")}
             onRetry={retry}
             retryLabel={retryLabel}
           />
         ) : null}
 
         {hasTcWarning && tcTrackQuery.data?.cyclones.length ? (
-          <section className="border border-[rgb(var(--signal-red)/0.35)] bg-[rgb(var(--signal-red)/0.06)] p-4">
-            <div className="section-label">{t(lang, "label.typhoon")}</div>
+          <section aria-labelledby="tc-heading" className="border border-[rgb(var(--signal-red)/0.35)] bg-[rgb(var(--signal-red)/0.06)] p-4">
+            <h2 id="tc-heading" className="label text-[rgb(var(--muted))]">{t(lang, "label.typhoon")}</h2>
             <div className="mt-3 space-y-4">
               {tcTrackQuery.data.cyclones.map((cyclone) => {
                 const latest = cyclone.latestPast ?? cyclone.latestForecast;
@@ -177,22 +175,26 @@ export default function Home() {
           </section>
         ) : null}
 
-        <section className="border-b border-[rgb(var(--rule))] pb-8">
-          <div className="section-label">{t(lang, "label.now")}</div>
+        <section
+          aria-labelledby="now-heading"
+          className="min-h-[220px] border border-[rgb(var(--rule))] bg-[rgb(var(--card))] p-4 sm:p-6"
+        >
+          <h2 id="now-heading" className="label text-[rgb(var(--muted))]">{t(lang, "label.now")}</h2>
 
           {errors?.now ? (
             <div className="mt-3">
-              <SectionError
-                message="Current observation unavailable"
+              <Alert
+                variant="warning"
+                message={t(lang, "error.now")}
                 onRetry={retry}
                 retryLabel={retryLabel}
               />
             </div>
           ) : (
-            <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-              <div>
+            <div className="mt-3 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+              <div className="min-w-0">
                 <div
-                  className="anim-temp font-display text-7xl font-extrabold leading-none tracking-tight sm:text-8xl"
+                  className="anim-temp font-display text-7xl font-extrabold leading-none tracking-tight tabular-nums sm:text-8xl"
                   style={{ color: toneColor(tempTone) }}
                 >
                   {dashboardQuery.isLoading ? (
@@ -209,13 +211,18 @@ export default function Home() {
                 <div className="mt-3 font-data text-sm text-[rgb(var(--muted))]">
                   {station}
                 </div>
+                <div className="mt-2 flex items-center gap-2 text-sm">
+                  <span
+                    aria-hidden
+                    className="h-2.5 w-2.5 shrink-0 rounded-full"
+                    style={{ background: toneColor(tempTone) }}
+                  />
+                  <nowVisual.Icon className="h-4 w-4 shrink-0" style={{ color: toneColor(tempTone) }} />
+                  <span>{nowVisual.label}</span>
+                </div>
               </div>
 
-              <div className="space-y-1 font-data text-xs uppercase tracking-[0.12em] text-[rgb(var(--muted))] sm:text-right">
-                <div className="flex items-center gap-2 sm:justify-end normal-case tracking-normal text-sm text-[rgb(var(--fg))]">
-                  <nowVisual.Icon className="h-4 w-4" style={{ color: toneColor(tempTone) }} />
-                  {nowVisual.label}
-                </div>
+              <div className="meta space-y-1 sm:text-right">
                 {now?.humidity ? (
                   <div>
                     {t(lang, "label.humidity")} {now.humidity.value}
@@ -237,63 +244,55 @@ export default function Home() {
             </div>
           )}
 
-          {!errors?.now && (hasLightning || nowStats.length > 0 || now?.tcMessage?.length) ? (
+          {!errors?.now && (hasLightning || (now?.tcMessage?.length ?? 0) > 0) ? (
             <div className="mt-4 space-y-2">
               {hasLightning ? (
-                <div className="border-l-4 border-[rgb(var(--signal-amber))] bg-[rgb(var(--signal-amber)/0.1)] px-4 py-2 text-sm">
-                  {t(lang, "label.lightning.active")}
-                </div>
+                <Alert variant="advisory" message={t(lang, "label.lightning.active")} />
               ) : null}
-              {now?.tcMessage?.map((line, index) => (
-                <div
-                  key={`tc-${index}`}
-                  className="border-l-4 border-[rgb(var(--signal-red))] bg-[rgb(var(--signal-red)/0.06)] px-4 py-2 text-sm leading-relaxed"
-                >
-                  {line}
-                </div>
-              ))}
-              {nowStats.length > 0 ? (
-                <div className="flex flex-wrap gap-x-6 gap-y-1 font-data text-xs text-[rgb(var(--muted))]">
-                  {nowStats.map((stat) => (
-                    <div key={stat.label}>
-                      <span className="uppercase tracking-[0.1em]">{stat.label}</span>{" "}
-                      <span className="text-[rgb(var(--fg))]">{stat.value}</span>
-                    </div>
+              {now?.tcMessage?.length ? (
+                <Alert variant="warning">
+                  {now.tcMessage.map((line, index) => (
+                    <p key={`tc-${index}`} className={index > 0 ? "mt-1" : "mt-0.5"}>
+                      {line}
+                    </p>
                   ))}
-                </div>
+                </Alert>
               ) : null}
             </div>
           ) : null}
 
-          {sunTimesQuery.data ? (
-            <div className="mt-4 flex flex-wrap gap-x-6 gap-y-1 font-data text-xs text-[rgb(var(--muted))]">
-              {sunTimesQuery.data.rise ? (
-                <div>
-                  <span className="uppercase tracking-[0.1em]">{t(lang, "label.sunrise")}</span>{" "}
-                  <span className="text-[rgb(var(--fg))]">{sunTimesQuery.data.rise}</span>
+          {!errors?.now && nowStats.length > 0 ? (
+            <div className="mt-4 flex flex-wrap gap-x-6 gap-y-1 border-t border-[rgb(var(--rule))] pt-3 font-data text-xs text-[rgb(var(--muted))]">
+              {nowStats.map((stat) => (
+                <div key={stat.label}>
+                  <span className="uppercase tracking-[0.1em]">{stat.label}</span>{" "}
+                  <span className="text-[rgb(var(--fg))]">{stat.value}</span>
                 </div>
-              ) : null}
-              {sunTimesQuery.data.transit ? (
-                <div>
-                  <span className="uppercase tracking-[0.1em]">{t(lang, "label.sun_transit")}</span>{" "}
-                  <span className="text-[rgb(var(--fg))]">{sunTimesQuery.data.transit}</span>
-                </div>
-              ) : null}
-              {sunTimesQuery.data.set ? (
-                <div>
-                  <span className="uppercase tracking-[0.1em]">{t(lang, "label.sunset")}</span>{" "}
-                  <span className="text-[rgb(var(--fg))]">{sunTimesQuery.data.set}</span>
-                </div>
-              ) : null}
+              ))}
             </div>
+          ) : null}
+
+          {sunLedger.length > 0 ? (
+            <dl className="mt-4 grid grid-cols-3 divide-x divide-[rgb(var(--rule))] border-y border-[rgb(var(--rule))]">
+              {sunLedger.map((entry) => (
+                <div key={entry.label} className="px-3 py-2 first:pl-0">
+                  <dt className="font-data text-xs uppercase tracking-[0.1em] text-[rgb(var(--muted))]">
+                    {entry.label}
+                  </dt>
+                  <dd className="mt-0.5 font-data text-sm text-[rgb(var(--fg))]">
+                    {entry.value}
+                  </dd>
+                </div>
+              ))}
+            </dl>
           ) : null}
         </section>
 
-        <section>
+        <section aria-labelledby="forecast-heading">
           <div className="flex items-end justify-between gap-3">
-            <div className="section-label">{t(lang, "label.forecast_9d")}</div>
+            <h2 id="forecast-heading" className="label text-[rgb(var(--muted))]">{t(lang, "label.forecast_9d")}</h2>
             {forecast?.updateTime ? (
-              <div className="font-data text-[0.65rem] text-[rgb(var(--muted))]">
+              <div className="font-data text-xs text-[rgb(var(--muted))]">
                 {t(lang, "label.updated")} {formatHktDateTime(forecast.updateTime)}
               </div>
             ) : null}
@@ -301,68 +300,84 @@ export default function Home() {
 
           {errors?.forecast9d ? (
             <div className="mt-3">
-              <SectionError
-                message="9-day forecast unavailable"
+              <Alert
+                variant="warning"
+                message={t(lang, "error.forecast_9d")}
                 onRetry={retry}
                 retryLabel={retryLabel}
               />
             </div>
           ) : (
-            <div className="mt-3 -mx-4 overflow-x-auto px-4 pb-1">
-              <div className="flex min-w-max gap-0 border-y border-[rgb(var(--rule))]">
+            <div className="mt-3 grid grid-cols-3 gap-px border-y border-[rgb(var(--rule))] bg-[rgb(var(--rule))] md:grid-cols-5 xl:grid-cols-9">
                 {dashboardQuery.isLoading
-                  ? Array.from({ length: 7 }).map((_, index) => (
+                  ? Array.from({ length: 9 }).map((_, index) => (
                       <div
                         key={index}
-                        className="h-28 w-28 animate-pulse border-r border-[rgb(var(--rule))] bg-[rgb(var(--fg)/0.04)] last:border-r-0"
-                      />
+                        className="min-h-[168px] animate-pulse bg-[rgb(var(--bg))] px-3 py-3"
+                      >
+                        <div className="h-3 w-8 bg-[rgb(var(--fg)/0.08)]" />
+                        <div className="mt-2 h-6 w-14 bg-[rgb(var(--fg)/0.08)]" />
+                        <div className="mt-2 h-3 w-16 bg-[rgb(var(--fg)/0.06)]" />
+                        <div className="mt-2 h-8 w-full bg-[rgb(var(--fg)/0.04)]" />
+                      </div>
                     ))
                   : previewDays.map((day) => {
                       const visual = getHkoWeatherVisual(day.ForecastIcon ?? null);
+                      const psrText = day.PSR
+                        ? `${t(lang, "label.rain_probability")}: ${day.PSR}`
+                        : null;
                       return (
                         <div
                           key={day.forecastDate}
-                          className="w-32 shrink-0 border-r border-[rgb(var(--rule))] px-3 py-3 last:border-r-0"
+                          className="min-h-[168px] bg-[rgb(var(--bg))] px-3 py-3 transition-colors hover:bg-[rgb(var(--fg)/0.04)]"
                         >
-                          <div className="font-data text-[0.65rem] uppercase tracking-[0.1em] text-[rgb(var(--muted))]">
+                          <div className="font-data text-xs uppercase tracking-[0.1em] text-[rgb(var(--muted))]">
                             {day.week.slice(0, 3)}
                           </div>
                           <div className="mt-2 flex items-center justify-between gap-2">
-                            <div className="font-display text-xl font-bold">
+                            <div className="font-display text-xl font-bold tabular-nums">
                               {day.forecastMaxtemp.value}°
                             </div>
                             <visual.Icon
-                              className="h-4 w-4 text-[rgb(var(--signal-teal))]"
+                              className="h-4 w-4 shrink-0 text-[rgb(var(--signal-teal))]"
                               aria-label={visual.label}
                             />
                           </div>
-                          <div className="font-data text-xs text-[rgb(var(--muted))]">
+                          <div className="font-data text-xs tabular-nums text-[rgb(var(--muted))]">
                             {t(lang, "label.low")} {day.forecastMintemp.value}°
                           </div>
                           {day.forecastMinrh && day.forecastMaxrh ? (
-                            <div className="mt-1 font-data text-[0.65rem] text-[rgb(var(--muted))]">
+                            <div className="mt-1 font-data text-xs tabular-nums text-[rgb(var(--muted))]">
                               {day.forecastMinrh.value}–{day.forecastMaxrh.value}
                               {day.forecastMaxrh.unit}
                             </div>
                           ) : null}
-                          {day.PSR ? (
-                            <div className="mt-1 font-data text-[0.65rem] uppercase tracking-[0.08em] text-[rgb(var(--signal-teal))]">
-                              {t(lang, "label.rain_probability")}: {day.PSR}
+                          {psrText ? (
+                            <div
+                              title={psrText}
+                              className="mt-1 line-clamp-2 font-data text-xs uppercase leading-snug tracking-[0.08em] text-[rgb(var(--signal-teal))]"
+                            >
+                              {psrText}
                             </div>
                           ) : null}
                           {day.forecastWind ? (
-                            <div className="mt-1 line-clamp-2 text-[0.65rem] leading-snug text-[rgb(var(--muted))]">
+                            <div
+                              title={day.forecastWind}
+                              className="mt-1 line-clamp-2 text-xs leading-snug text-[rgb(var(--muted))]"
+                            >
                               {day.forecastWind}
                             </div>
                           ) : null}
-                          <div className="mt-2 line-clamp-2 text-[0.7rem] leading-snug text-[rgb(var(--muted))]">
+                          <div
+                            title={day.forecastWeather}
+                            className="mt-2 line-clamp-2 text-xs leading-snug text-[rgb(var(--muted))]"
+                          >
                             {day.forecastWeather}
                           </div>
                         </div>
                       );
                     })}
               </div>
-            </div>
           )}
 
           {!errors?.forecast9d && (forecast?.seaTemp || (forecast?.soilTemp?.length ?? 0) > 0) ? (
@@ -396,13 +411,14 @@ export default function Home() {
           ) : null}
         </section>
 
-        <section className="grid gap-8 lg:grid-cols-12">
+        <section aria-labelledby="local-heading" className="grid gap-8 lg:grid-cols-12">
           <div className="lg:col-span-7">
-            <div className="section-label">Local forecast</div>
+            <h2 id="local-heading" className="label text-[rgb(var(--muted))]">{t(lang, "label.local_forecast")}</h2>
             {errors?.localForecast ? (
               <div className="mt-3">
-                <SectionError
-                  message="Local forecast unavailable"
+                <Alert
+                  variant="warning"
+                  message={t(lang, "error.local_forecast")}
                   onRetry={retry}
                   retryLabel={retryLabel}
                 />
@@ -415,26 +431,25 @@ export default function Home() {
                   </div>
                 ) : null}
                 {dashboardQuery.isLoading ? (
-                  <div className="h-24 animate-pulse bg-[rgb(var(--fg)/0.06)]" />
+                  <div className="h-24 animate-pulse rounded-[var(--radius)] bg-[rgb(var(--fg)/0.06)]" />
                 ) : localForecast?.forecastDesc ? (
                   <p className="text-base leading-relaxed">{localForecast.forecastDesc}</p>
                 ) : (
                   <p className="text-[rgb(var(--muted))]">—</p>
                 )}
-                {localForecast?.outlook ? (
-                  <p className="text-sm leading-relaxed text-[rgb(var(--muted))]">
-                    {localForecast.outlook}
-                  </p>
+                {!dashboardQuery.isLoading && localForecast ? (
+                  <Link
+                    href="/explore"
+                    className="inline-block font-data text-xs uppercase tracking-[0.1em] text-[rgb(var(--signal-teal))] hover:underline"
+                  >
+                    {t(lang, "label.local_forecast.brief")}
+                  </Link>
                 ) : null}
                 {localForecast?.tcInfo ? (
-                  <p className="border-l-4 border-[rgb(var(--signal-red))] bg-[rgb(var(--signal-red)/0.06)] px-4 py-3 text-sm leading-relaxed">
-                    {localForecast.tcInfo}
-                  </p>
+                  <Alert variant="warning" message={localForecast.tcInfo} />
                 ) : null}
                 {localForecast?.fireDangerWarning ? (
-                  <p className="border-l-4 border-[rgb(var(--signal-amber))] bg-[rgb(var(--signal-amber)/0.1)] px-4 py-3 text-sm leading-relaxed">
-                    {localForecast.fireDangerWarning}
-                  </p>
+                  <Alert variant="advisory" message={localForecast.fireDangerWarning} />
                 ) : null}
               </div>
             )}
@@ -446,8 +461,9 @@ export default function Home() {
         </section>
 
         {dashboardQuery.error ? (
-          <SectionError
-            message="Weather board failed to load"
+          <Alert
+            variant="warning"
+            message={t(lang, "error.board")}
             onRetry={retry}
             retryLabel={retryLabel}
           />
