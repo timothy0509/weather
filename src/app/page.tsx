@@ -7,13 +7,15 @@ import Link from "next/link";
 import { api } from "@/app/providers";
 import { AppShell } from "@/components/app-shell";
 import { Alert } from "@/components/alert";
+import { ChartLegend, TempTrendChart } from "@/components/charts";
 import { RainfallPanel } from "@/components/rainfall-panel";
 import { SignalStrip } from "@/components/signal-strip";
 import { useStationContext } from "@/components/station-provider";
 import { Topbar } from "@/components/topbar";
 import { getHkoWeatherVisual } from "@/lib/hko-icons";
 import { t } from "@/lib/i18n";
-import { formatHktDateTime, getHktDateParts } from "@/lib/time";
+import { formatForecastDay, formatHktDateTime, getHktDateParts } from "@/lib/time";
+import { formatUnit } from "@/lib/units";
 import { getTempTone, toneColor } from "@/lib/weather-visual";
 
 export default function Home() {
@@ -50,6 +52,19 @@ export default function Home() {
   });
 
   const previewDays = useMemo(() => (forecast?.days ?? []).slice(0, 9), [forecast?.days]);
+
+  const trendPoints = useMemo(
+    () =>
+      previewDays
+        .filter((day) => day.forecastMaxtemp && day.forecastMintemp)
+        .map((day) => ({
+          label: day.week.slice(0, 3),
+          sublabel: formatForecastDay(day.forecastDate, lang),
+          max: day.forecastMaxtemp.value,
+          min: day.forecastMintemp.value,
+        })),
+    [previewDays, lang],
+  );
 
   const tempC = now?.temperature?.value ?? null;
   const tempTone = useMemo(() => getTempTone(tempC), [tempC]);
@@ -226,7 +241,7 @@ export default function Home() {
                 {now?.humidity ? (
                   <div>
                     {t(lang, "label.humidity")} {now.humidity.value}
-                    {now.humidity.unit}
+                    {formatUnit(now.humidity.unit)}
                   </div>
                 ) : null}
                 {now?.uvIndex ? (
@@ -313,7 +328,7 @@ export default function Home() {
                   ? Array.from({ length: 9 }).map((_, index) => (
                       <div
                         key={index}
-                        className="min-h-[168px] animate-pulse bg-[rgb(var(--bg))] px-3 py-3"
+                        className="min-h-[260px] animate-pulse bg-[rgb(var(--bg))] px-3 py-3"
                       >
                         <div className="h-3 w-8 bg-[rgb(var(--fg)/0.08)]" />
                         <div className="mt-2 h-6 w-14 bg-[rgb(var(--fg)/0.08)]" />
@@ -329,10 +344,13 @@ export default function Home() {
                       return (
                         <div
                           key={day.forecastDate}
-                          className="min-h-[168px] bg-[rgb(var(--bg))] px-3 py-3 transition-colors hover:bg-[rgb(var(--fg)/0.04)]"
+                          className="bg-[rgb(var(--bg))] px-3 py-3 transition-colors hover:bg-[rgb(var(--fg)/0.04)]"
                         >
                           <div className="font-data text-xs uppercase tracking-[0.1em] text-[rgb(var(--muted))]">
-                            {day.week.slice(0, 3)}
+                            {day.week}
+                          </div>
+                          <div className="font-data text-[11px] leading-tight text-[rgb(var(--muted))]">
+                            {formatForecastDay(day.forecastDate, lang)}
                           </div>
                           <div className="mt-2 flex items-center justify-between gap-2">
                             <div className="font-display text-xl font-bold tabular-nums">
@@ -349,36 +367,54 @@ export default function Home() {
                           {day.forecastMinrh && day.forecastMaxrh ? (
                             <div className="mt-1 font-data text-xs tabular-nums text-[rgb(var(--muted))]">
                               {day.forecastMinrh.value}–{day.forecastMaxrh.value}
-                              {day.forecastMaxrh.unit}
+                              {formatUnit(day.forecastMaxrh.unit)}
                             </div>
                           ) : null}
                           {psrText ? (
-                            <div
-                              title={psrText}
-                              className="mt-1 line-clamp-2 font-data text-xs uppercase leading-snug tracking-[0.08em] text-[rgb(var(--signal-teal))]"
-                            >
+                            <div className="mt-1 font-data text-xs uppercase leading-snug tracking-[0.08em] text-[rgb(var(--signal-teal))]">
                               {psrText}
                             </div>
                           ) : null}
                           {day.forecastWind ? (
-                            <div
-                              title={day.forecastWind}
-                              className="mt-1 line-clamp-2 text-xs leading-snug text-[rgb(var(--muted))]"
-                            >
+                            <p className="mt-1 text-xs leading-snug text-[rgb(var(--muted))]">
                               {day.forecastWind}
-                            </div>
+                            </p>
                           ) : null}
-                          <div
-                            title={day.forecastWeather}
-                            className="mt-2 line-clamp-2 text-xs leading-snug text-[rgb(var(--muted))]"
-                          >
+                          <p className="mt-2 text-xs leading-snug text-[rgb(var(--muted))]">
                             {day.forecastWeather}
-                          </div>
+                          </p>
                         </div>
                       );
                     })}
               </div>
           )}
+
+          {!errors?.forecast9d && trendPoints.length >= 2 ? (
+            <div className="mt-5 border border-[rgb(var(--rule))] bg-[rgb(var(--card))] p-4 sm:p-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h3 className="label text-[rgb(var(--muted))]">{t(lang, "label.chart.temp")}</h3>
+                <ChartLegend
+                  items={[
+                    {
+                      label: t(lang, "label.high"),
+                      swatch: (
+                        <span className="block h-2 w-2 rounded-full bg-[rgb(var(--fg))]" />
+                      ),
+                    },
+                    {
+                      label: t(lang, "label.low"),
+                      swatch: (
+                        <span className="block h-0.5 w-2.5 bg-[rgb(var(--muted))]" />
+                      ),
+                    },
+                  ]}
+                />
+              </div>
+              <div className="mt-4">
+                <TempTrendChart points={trendPoints} ariaLabel={t(lang, "label.chart.temp")} />
+              </div>
+            </div>
+          ) : null}
 
           {!errors?.forecast9d && (forecast?.seaTemp || (forecast?.soilTemp?.length ?? 0) > 0) ? (
             <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 font-data text-xs text-[rgb(var(--muted))]">

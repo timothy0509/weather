@@ -44,3 +44,15 @@ export function getHktYesterdayIso(date: Date = new Date()) {
 export function toCompactDate(iso: string) {
   return iso.replace(/-/g, "");
 }
+
+/** Short calendar date ("15 Oct" / "10月15日") from an HKO YYYYMMDD forecast date. */
+export function formatForecastDay(iso: string, lang: string) {
+  if (!/^\d{8}$/.test(iso)) return iso;
+
+  const date = new Date(
+    Date.UTC(Number(iso.slice(0, 4)), Number(iso.slice(4, 6)) - 1, Number(iso.slice(6, 8))),
+  );
+  const locale = lang === "tc" ? "zh-HK" : lang === "sc" ? "zh-CN" : "en-GB";
+
+  return new Intl.DateTimeFormat(locale, { timeZone: "UTC", day: "numeric", month: "short" }).format(date);
+}

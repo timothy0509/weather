@@ -40,6 +40,16 @@ export type I18nKey =
   | "label.wind"
   | "label.sea_temp"
   | "label.soil_temp"
+  | "label.date"
+  | "label.rise"
+  | "label.transit"
+  | "label.set"
+  | "label.time"
+  | "label.hour"
+  | "label.tide_height_m"
+  | "label.high"
+  | "label.chart.temp"
+  | "label.chart.tide"
   | "label.mintemp_00_09"
   | "label.rainfall_00_12"
   | "label.rainfall_last_month"
@@ -110,7 +120,7 @@ const DICTS: Record<Language, Dict> = {
     "label.rainfall.past_hour_district": "Past hour (district max)",
     "label.rainfall.past_hour_stations": "Past hour (automatic stations)",
     "label.rainfall.place": "Place",
-    "label.rainfall.amount": "Rainfall (mm, past hour)",
+    "label.rainfall.amount": "mm",
     "label.rainfall.empty": "No rainfall recorded in the past hour.",
     "label.rainfall.show_all": "Show all",
     "label.rainfall.show_less": "Show less",
@@ -132,6 +142,16 @@ const DICTS: Record<Language, Dict> = {
     "label.wind": "Wind",
     "label.sea_temp": "Sea temp",
     "label.soil_temp": "Soil temp",
+    "label.date": "Date",
+    "label.rise": "Rise",
+    "label.transit": "Transit",
+    "label.set": "Set",
+    "label.time": "Time",
+    "label.hour": "Hour",
+    "label.tide_height_m": "Height (m)",
+    "label.high": "High",
+    "label.chart.temp": "Temperature trend",
+    "label.chart.tide": "Hourly tide height",
     "label.mintemp_00_09": "Min temp 00–09",
     "label.rainfall_00_12": "Rainfall 00–12",
     "label.rainfall_last_month": "Last month",
@@ -200,7 +220,7 @@ const DICTS: Record<Language, Dict> = {
     "label.rainfall.past_hour_district": "過去一小時（地區最大）",
     "label.rainfall.past_hour_stations": "過去一小時（自動站）",
     "label.rainfall.place": "地點",
-    "label.rainfall.amount": "雨量（毫米，過去一小時）",
+    "label.rainfall.amount": "毫米",
     "label.rainfall.empty": "過去一小時沒有錄得雨量。",
     "label.rainfall.show_all": "顯示全部",
     "label.rainfall.show_less": "收起",
@@ -222,6 +242,16 @@ const DICTS: Record<Language, Dict> = {
     "label.wind": "風",
     "label.sea_temp": "海水溫度",
     "label.soil_temp": "土壤溫度",
+    "label.date": "日期",
+    "label.rise": "升起",
+    "label.transit": "中天",
+    "label.set": "落下",
+    "label.time": "時間",
+    "label.hour": "小時",
+    "label.tide_height_m": "高度（米）",
+    "label.high": "最高",
+    "label.chart.temp": "氣溫趨勢",
+    "label.chart.tide": "每小時潮高",
     "label.mintemp_00_09": "凌晨最低溫",
     "label.rainfall_00_12": "上午雨量",
     "label.rainfall_last_month": "上月雨量",
@@ -289,7 +319,7 @@ const DICTS: Record<Language, Dict> = {
     "label.rainfall.past_hour_district": "过去一小时（地区最大）",
     "label.rainfall.past_hour_stations": "过去一小时（自动站）",
     "label.rainfall.place": "地点",
-    "label.rainfall.amount": "雨量（毫米，过去一小时）",
+    "label.rainfall.amount": "毫米",
     "label.rainfall.empty": "过去一小时没有录得雨量。",
     "label.rainfall.show_all": "显示全部",
     "label.rainfall.show_less": "收起",
@@ -311,6 +341,16 @@ const DICTS: Record<Language, Dict> = {
     "label.wind": "风",
     "label.sea_temp": "海水温度",
     "label.soil_temp": "土壤温度",
+    "label.date": "日期",
+    "label.rise": "升起",
+    "label.transit": "中天",
+    "label.set": "落下",
+    "label.time": "时间",
+    "label.hour": "小时",
+    "label.tide_height_m": "高度（米）",
+    "label.high": "最高",
+    "label.chart.temp": "气温趋势",
+    "label.chart.tide": "每小时潮高",
     "label.mintemp_00_09": "凌晨最低温",
     "label.rainfall_00_12": "上午雨量",
     "label.rainfall_last_month": "上月雨量",
