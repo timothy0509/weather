@@ -47,6 +47,9 @@ export type I18nKey =
   | "label.time"
   | "label.hour"
   | "label.tide_height_m"
+  | "label.high"
+  | "label.chart.temp"
+  | "label.chart.tide"
   | "label.mintemp_00_09"
   | "label.rainfall_00_12"
   | "label.rainfall_last_month"
@@ -146,6 +149,9 @@ const DICTS: Record<Language, Dict> = {
     "label.time": "Time",
     "label.hour": "Hour",
     "label.tide_height_m": "Height (m)",
+    "label.high": "High",
+    "label.chart.temp": "Temperature trend",
+    "label.chart.tide": "Hourly tide height",
     "label.mintemp_00_09": "Min temp 00–09",
     "label.rainfall_00_12": "Rainfall 00–12",
     "label.rainfall_last_month": "Last month",
@@ -243,6 +249,9 @@ const DICTS: Record<Language, Dict> = {
     "label.time": "時間",
     "label.hour": "小時",
     "label.tide_height_m": "高度（米）",
+    "label.high": "最高",
+    "label.chart.temp": "氣溫趨勢",
+    "label.chart.tide": "每小時潮高",
     "label.mintemp_00_09": "凌晨最低溫",
     "label.rainfall_00_12": "上午雨量",
     "label.rainfall_last_month": "上月雨量",
@@ -339,6 +348,9 @@ const DICTS: Record<Language, Dict> = {
     "label.time": "时间",
     "label.hour": "小时",
     "label.tide_height_m": "高度（米）",
+    "label.high": "最高",
+    "label.chart.temp": "气温趋势",
+    "label.chart.tide": "每小时潮高",
     "label.mintemp_00_09": "凌晨最低温",
     "label.rainfall_00_12": "上午雨量",
     "label.rainfall_last_month": "上月雨量",

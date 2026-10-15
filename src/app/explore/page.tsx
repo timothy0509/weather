@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { api } from "@/app/providers";
 import { AppShell } from "@/components/app-shell";
+import { ChartLegend, ExtremesCurveChart } from "@/components/charts";
 import { DataTable } from "@/components/data-table";
 import { Panel } from "@/components/panel";
 import { Topbar } from "@/components/topbar";
@@ -154,6 +155,32 @@ export default function ExplorePage() {
   }, [lang, tideTimesQuery.data]);
 
   const tideView = tideMode === "heights" ? tideHeightRows : tideTimeRows;
+
+  /** Chart feed: raw hourly heights as numbers for the SVG curve. */
+  const tideHeightPoints = useMemo(() => {
+    const table = tideHeightsQuery.data;
+    if (!table?.fields?.length || !table.data?.length) return null;
+
+    const hourIndexes = table.fields
+      .map((field, index) => ({ field, index }))
+      .filter((entry) => /^\d{1,2}$/.test(entry.field.trim()));
+
+    const points = table.data
+      .flatMap((row) =>
+        hourIndexes.map(({ field, index }) => {
+          const value = Number(row[index]);
+          return Number.isFinite(value)
+            ? {
+                label: `${String(field).padStart(2, "0")}:00`,
+                value,
+              }
+            : null;
+        }),
+      )
+      .filter((entry) => entry !== null);
+
+    return points.length >= 3 ? points : null;
+  }, [tideHeightsQuery.data]);
 
   /** Open data responses expose raw column keys like "YYYY-MM-DD"; give them readable heads. */
   const humanizeField = (field: string) => {
@@ -345,6 +372,28 @@ export default function ExplorePage() {
               </Select>
             </div>
 
+            {tideMode === "heights" && tideHeightPoints ? (
+              <div className="mt-4">
+                <ChartLegend
+                  items={[
+                    {
+                      label: t(lang, "label.chart.tide"),
+                      swatch: (
+                        <span className="block h-2 w-2 rounded-full bg-[rgb(var(--signal-teal))]" />
+                      ),
+                    },
+                  ]}
+                />
+                <div className="mt-2 border border-[rgb(var(--rule))] py-3 pl-2 pr-2 sm:pl-4 sm:pr-4">
+                  <ExtremesCurveChart
+                    points={tideHeightPoints}
+                    ariaLabel={t(lang, "label.chart.tide")}
+                    formatPoint={(value) => `${value.toFixed(1)} m`}
+                    formatTick={(value) => value.toFixed(1)}
+                  />
+                </div>
+              </div>
+            ) : null}
             {tideLoading ? (
               <div className="mt-4 h-32 animate-pulse rounded-[var(--radius)] bg-[rgb(var(--fg)/0.06)]" />
             ) : tideError ? (

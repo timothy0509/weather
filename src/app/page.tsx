@@ -7,6 +7,7 @@ import Link from "next/link";
 import { api } from "@/app/providers";
 import { AppShell } from "@/components/app-shell";
 import { Alert } from "@/components/alert";
+import { ChartLegend, TempTrendChart } from "@/components/charts";
 import { RainfallPanel } from "@/components/rainfall-panel";
 import { SignalStrip } from "@/components/signal-strip";
 import { useStationContext } from "@/components/station-provider";
@@ -51,6 +52,19 @@ export default function Home() {
   });
 
   const previewDays = useMemo(() => (forecast?.days ?? []).slice(0, 9), [forecast?.days]);
+
+  const trendPoints = useMemo(
+    () =>
+      previewDays
+        .filter((day) => day.forecastMaxtemp && day.forecastMintemp)
+        .map((day) => ({
+          label: day.week.slice(0, 3),
+          sublabel: formatForecastDay(day.forecastDate, lang),
+          max: day.forecastMaxtemp.value,
+          min: day.forecastMintemp.value,
+        })),
+    [previewDays, lang],
+  );
 
   const tempC = now?.temperature?.value ?? null;
   const tempTone = useMemo(() => getTempTone(tempC), [tempC]);
@@ -374,6 +388,33 @@ export default function Home() {
                     })}
               </div>
           )}
+
+          {!errors?.forecast9d && trendPoints.length >= 2 ? (
+            <div className="mt-5 border border-[rgb(var(--rule))] bg-[rgb(var(--card))] p-4 sm:p-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h3 className="label text-[rgb(var(--muted))]">{t(lang, "label.chart.temp")}</h3>
+                <ChartLegend
+                  items={[
+                    {
+                      label: t(lang, "label.high"),
+                      swatch: (
+                        <span className="block h-2 w-2 rounded-full bg-[rgb(var(--fg))]" />
+                      ),
+                    },
+                    {
+                      label: t(lang, "label.low"),
+                      swatch: (
+                        <span className="block h-0.5 w-2.5 bg-[rgb(var(--muted))]" />
+                      ),
+                    },
+                  ]}
+                />
+              </div>
+              <div className="mt-4">
+                <TempTrendChart points={trendPoints} ariaLabel={t(lang, "label.chart.temp")} />
+              </div>
+            </div>
+          ) : null}
 
           {!errors?.forecast9d && (forecast?.seaTemp || (forecast?.soilTemp?.length ?? 0) > 0) ? (
             <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 font-data text-xs text-[rgb(var(--muted))]">
