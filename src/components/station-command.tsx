@@ -55,7 +55,7 @@ export function StationCommand({
           aria-label={`${t(lang, "label.station")}: ${value}`}
         >
           <MapPin className="h-3.5 w-3.5 text-[rgb(var(--muted))]" />
-          <span className="max-w-[10rem] truncate sm:max-w-[14rem]">{value}</span>
+          <span title={value} className="max-w-[10rem] truncate sm:max-w-[14rem]">{value}</span>
           <span className="hidden text-xs text-[rgb(var(--muted))] sm:inline">⌘K</span>
         </Button>
       </Dialog.Trigger>
@@ -101,7 +101,7 @@ export function StationCommand({
                             "data-[selected='true']:bg-[rgb(var(--fg)/0.06)]",
                           )}
                         >
-                          <span className="truncate">{station}</span>
+                          <span>{station}</span>
                           {selected ? (
                             <Check
                               className="h-3.5 w-3.5 shrink-0 text-[rgb(var(--muted))]"

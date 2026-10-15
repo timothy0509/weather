@@ -70,7 +70,7 @@ export function SignalStrip({
                       <span className="block font-data text-xs font-semibold uppercase tracking-[0.16em] opacity-80">
                         {warning.code ?? warning.key}
                       </span>
-                      <span className="font-display mt-0.5 block truncate text-sm font-semibold">
+                      <span className="font-display mt-0.5 block text-sm font-semibold leading-snug">
                         {warning.type ?? warning.name ?? warning.key}
                       </span>
                     </span>

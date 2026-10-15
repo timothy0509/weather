@@ -19,6 +19,10 @@ build
 .DS_Store
 *.pem
 
+# local tooling artifacts
+.playwright-cli/
+tsconfig.tsbuildinfo
+
 # debug
 npm-debug.log*
 yarn-debug.log*

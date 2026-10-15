@@ -107,9 +107,63 @@ export default function ExplorePage() {
     return { fields, rows };
   }, [openDataQuery.data?.data, openDataQuery.data?.fields]);
 
-  const tideData = tideMode === "heights" ? tideHeightsQuery.data : tideTimesQuery.data;
   const tideLoading = tideMode === "heights" ? tideHeightsQuery.isLoading : tideTimesQuery.isLoading;
   const tideError = tideMode === "heights" ? tideHeightsQuery.error : tideTimesQuery.error;
+
+  /**
+   * HKO returns tide height tables with 24 hour columns squeezed onto one
+   * day-row. Transpose so each hour reads as its own row.
+   */
+  const tideHeightRows = useMemo(() => {
+    const table = tideHeightsQuery.data;
+    if (!table?.fields?.length || !table.data?.length) return null;
+
+    const hourIndexes = table.fields
+      .map((field, index) => ({ field, index }))
+      .filter((entry) => /^\d{1,2}$/.test(entry.field.trim()));
+
+    const rows = table.data.flatMap((row) =>
+      hourIndexes.map(({ field, index }) => [
+        `${String(field).padStart(2, "0")}:00`,
+        row[index] == null || row[index] === "" ? null : row[index],
+      ]),
+    );
+
+    return { fields: [t(lang, "label.hour"), t(lang, "label.tide_height_m")], rows };
+  }, [lang, tideHeightsQuery.data]);
+
+  /** High/low tide tables carry repeating Time/Height column pairs; flatten to rows. */
+  const tideTimeRows = useMemo(() => {
+    const table = tideTimesQuery.data;
+    if (!table?.fields?.length || !table.data?.length) return null;
+
+    const rows = table.data.flatMap((row) => {
+      const pairs: unknown[][] = [];
+      for (let index = 2; index < row.length; index += 2) {
+        const time = String(row[index] ?? "");
+        if (!/^\d{2,4}$/.test(time)) continue;
+        pairs.push([
+          time.replace(/^(\d{2})(\d{2})$/, "$1:$2"),
+          row[index + 1] ?? null,
+        ]);
+      }
+      return pairs;
+    });
+
+    return { fields: [t(lang, "label.time"), t(lang, "label.tide_height_m")], rows };
+  }, [lang, tideTimesQuery.data]);
+
+  const tideView = tideMode === "heights" ? tideHeightRows : tideTimeRows;
+
+  /** Open data responses expose raw column keys like "YYYY-MM-DD"; give them readable heads. */
+  const humanizeField = (field: string) => {
+    const key = field.trim().toUpperCase();
+    if (key === "YYYY-MM-DD") return t(lang, "label.date");
+    if (key === "RISE") return t(lang, "label.rise");
+    if (key === "TRAN.") return t(lang, "label.transit");
+    if (key === "SET") return t(lang, "label.set");
+    return field;
+  };
 
   useEffect(() => {
     const onRefresh = () => {
@@ -298,8 +352,9 @@ export default function ExplorePage() {
             ) : (
               <div className="mt-4">
                 <DataTable
-                  fields={tideData?.fields ?? []}
-                  rows={(tideData?.data ?? []) as unknown[][]}
+                  fields={tideView?.fields ?? []}
+                  rows={(tideView?.rows ?? []) as unknown[][]
+                  }
                   emptyLabel={t(lang, "label.table.empty")}
                 />
               </div>
@@ -361,7 +416,7 @@ export default function ExplorePage() {
             ) : (
               <div className="mt-4">
                 <DataTable
-                  fields={openDataRows.fields}
+                  fields={openDataRows.fields.map(humanizeField)}
                   rows={openDataRows.rows.slice(0, 64) as unknown[][]}
                   emptyLabel={t(lang, "label.table.empty")}
                 />

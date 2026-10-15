@@ -184,10 +184,8 @@ export function RainfallPanel() {
                         key={row.label}
                         className="border-t border-[rgb(var(--rule))] transition-colors hover:bg-[rgb(var(--fg)/0.04)]"
                       >
-                        <td className="min-w-0 px-3 py-2">
-                          <div title={row.label} className="truncate">
-                            {row.label}
-                          </div>
+                        <td className="px-3 py-2">
+                          <div>{row.label}</div>
                           <div
                             aria-hidden={pct === 0}
                             className="mt-1 h-1 bg-[rgb(var(--signal-teal)/0.18)]"

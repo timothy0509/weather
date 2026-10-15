@@ -16,7 +16,7 @@ import { formatHktDateTime } from "@/lib/time";
 
 export default function RadarPage() {
   const { lang } = useStationContext();
-  const [range, setRange] = useState<RadarRange>("128");
+  const [range, setRange] = useState<RadarRange>("64");
 
   const radarQuery = api.weather.radar.useQuery(
     { range },
